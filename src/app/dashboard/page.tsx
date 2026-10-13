@@ -235,12 +235,12 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <Link href="/dashboard/scan" className="relative z-10 shrink-0">
+            <Link href="/dashboard/scan" className="relative z-10 shrink-0 w-full sm:w-auto">
               <Button
-                variant="primary"
+                variant="scan"
                 size="md"
-                rightIcon={<ArrowRight className="w-4 h-4" />}
-                className="bg-white text-indigo-900 hover:bg-indigo-50 font-bold border-none"
+                rightIcon={<ArrowRight className="w-4 h-4 text-white" />}
+                className="w-full sm:w-auto font-bold shadow-lg shadow-indigo-950/50 border border-indigo-400/40 hover:border-indigo-300/60"
               >
                 Launch Scanner
               </Button>

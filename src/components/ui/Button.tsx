@@ -1,5 +1,11 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { twMerge } from 'tailwind-merge';
+import { clsx, type ClassValue } from 'clsx';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'scan' | 'danger' | 'outline' | 'ghost' | 'success';
@@ -49,7 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      className={`${baseStyles} ${sizeStyles} ${variantStyles} ${className}`}
+      className={cn(baseStyles, sizeStyles, variantStyles, className)}
       disabled={disabled || isLoading}
       {...props}
     >
