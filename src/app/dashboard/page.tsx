@@ -237,16 +237,17 @@ export default function DashboardPage() {
 
             <Link href="/dashboard/scan" className="relative z-10 shrink-0 w-full sm:w-auto">
               <Button
-                variant="scan"
+                variant="none"
                 size="md"
-                rightIcon={<ArrowRight className="w-4 h-4 text-white" />}
-                className="w-full sm:w-auto font-bold shadow-lg shadow-indigo-950/50 border border-indigo-400/40 hover:border-indigo-300/60"
+                leftIcon={<Camera className="w-4 h-4 text-white shrink-0" />}
+                rightIcon={<ArrowRight className="w-4 h-4 text-white shrink-0" />}
+                className="w-full sm:w-auto font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-500 hover:via-indigo-500 hover:to-violet-500 border border-indigo-400/40 shadow-lg shadow-indigo-950/50 cursor-pointer"
               >
                 Launch Scanner
               </Button>
             </Link>
 
-            <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl" />
+            <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
           </div>
         </div>
 
