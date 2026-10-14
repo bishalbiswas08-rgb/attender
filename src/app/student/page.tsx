@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import {
   GraduationCap,
   CheckCircle2,
@@ -123,11 +125,13 @@ interface StudentData {
 }
 
 export default function StudentDashboardPage() {
+  const router = useRouter();
   const { success, error: toastError } = useToast();
 
   const [data, setData] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'AUTH_REQUIRED' | 'ACCESS_DENIED' | 'CONFIG_ERROR' | 'SERVER_ERROR' | null>(null);
 
   // Enrollment Form State (for unenrolled students)
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -143,26 +147,84 @@ export default function StudentDashboardPage() {
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const enrollmentPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
-  const fetchStudentData = async () => {
+  const getAuthHeaders = useCallback(async (customHeaders: Record<string, string> = {}) => {
+    const headers: Record<string, string> = { ...customHeaders };
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = createClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token) {
+          headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+        }
+      } catch {}
+    }
+    return headers;
+  }, []);
+
+  const fetchStudentData = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    setErrorType(null);
+
     try {
-      const res = await fetch('/api/student/me');
-      if (!res.ok) throw new Error('Unable to retrieve student profile.');
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch('/api/student/me', {
+        headers: authHeaders,
+      });
+
+      // 401: Unauthenticated -> redirect to /login
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+
+      // 403: Authenticated but not authorized
+      if (res.status === 403) {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || 'Access Denied: You do not have permission to view the student portal.');
+        setErrorType('ACCESS_DENIED');
+        setLoading(false);
+        return;
+      }
+
+      // 503: Server environment / database service configuration error
+      if (res.status === 503) {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || 'Database service configuration error on server.');
+        setErrorType('CONFIG_ERROR');
+        setLoading(false);
+        return;
+      }
+
+      // 500 / other failure: Server or database error
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || 'Unable to retrieve student profile from server.');
+        setErrorType('SERVER_ERROR');
+        setLoading(false);
+        return;
+      }
+
+      // 200: Successfully retrieved data (including NOT_ENROLLED status)
       const json = await res.json();
       setData(json);
+      setError(null);
+      setErrorType(null);
+
       if (json.availableClasses && json.availableClasses.length > 0) {
         setSelectedClassId((prev) => prev || json.availableClasses[0].id);
       }
     } catch (err: any) {
-      setError(err.message || 'Error loading student portal data.');
+      setError(err?.message || 'Error communicating with student portal service.');
+      setErrorType('SERVER_ERROR');
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthHeaders, router]);
 
   useEffect(() => {
     fetchStudentData();
-  }, []);
+  }, [fetchStudentData]);
 
   const handleEnrollmentPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -189,9 +251,10 @@ export default function StudentDashboardPage() {
 
     setIsSubmittingEnrollment(true);
     try {
+      const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
       const res = await fetch('/api/student/enrollment/request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           classId: selectedClassId,
           photoBase64: enrollmentPhotoBase64,
@@ -216,9 +279,10 @@ export default function StudentDashboardPage() {
   const handleWithdrawRequest = async (requestId: string) => {
     if (!confirm('Are you sure you want to withdraw this enrollment application?')) return;
     try {
+      const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
       const res = await fetch('/api/student/enrollment/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ requestId }),
       });
       const resData = await res.json();
@@ -239,9 +303,10 @@ export default function StudentDashboardPage() {
 
     setIsUpdatingPhoto(true);
     try {
+      const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
       const res = await fetch('/api/student/photo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ photoBase64: newPhotoBase64 }),
       });
 
@@ -271,12 +336,33 @@ export default function StudentDashboardPage() {
   if (error) {
     return (
       <div className="p-6 rounded-3xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-center max-w-md mx-auto my-12 space-y-3">
-        <AlertCircle className="w-8 h-8 text-rose-600 dark:text-rose-400 mx-auto" />
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">Connection Error</h3>
+        {errorType === 'ACCESS_DENIED' ? (
+          <ShieldAlert className="w-8 h-8 text-rose-600 dark:text-rose-400 mx-auto" />
+        ) : errorType === 'CONFIG_ERROR' ? (
+          <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto" />
+        ) : (
+          <AlertCircle className="w-8 h-8 text-rose-600 dark:text-rose-400 mx-auto" />
+        )}
+
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+          {errorType === 'ACCESS_DENIED'
+            ? 'Access Denied'
+            : errorType === 'CONFIG_ERROR'
+            ? 'Configuration Notice'
+            : 'Connection Error'}
+        </h3>
         <p className="text-xs text-slate-600 dark:text-slate-400">{error}</p>
-        <Button size="sm" variant="outline" onClick={fetchStudentData}>
-          Try Again
-        </Button>
+        <div className="flex items-center justify-center gap-2 pt-1">
+          {errorType === 'ACCESS_DENIED' ? (
+            <Button size="sm" variant="outline" onClick={() => router.push('/login')}>
+              Sign In with Another Account
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={fetchStudentData}>
+              Try Again
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

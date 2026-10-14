@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { getAuthenticatedUser } from '@/lib/auth/serverAuth';
 import { calculateBunks } from '@/lib/attendance/calculations';
 
@@ -7,125 +9,299 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  let authenticatedUserId: string | null = null;
+
   try {
+    // 1. Verify Server Environment Configuration (Item 9)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasAdminSecret = isSupabaseAdminConfigured();
+    const hasClientConfig = isSupabaseConfigured();
+
+    if (!supabaseUrl || (!hasAdminSecret && !hasClientConfig)) {
+      console.error('[Student Profile Error] Missing server-side configuration: Database service credentials not configured.');
+      return NextResponse.json(
+        {
+          error: 'Server configuration error: Database service credentials are not configured on this environment.',
+          code: 'ENV_CONFIG_MISSING',
+        },
+        { status: 503 }
+      );
+    }
+
+    // 2. Authentication Check — Derives identity ONLY from authenticated session (Item 1, 4)
     const authCtx = await getAuthenticatedUser(req);
+    authenticatedUserId = authCtx.user?.id || null;
+
+    // Safe Diagnostic Logging (Item 8)
+    console.log('[Student Profile] Auth check:', {
+      userId: authenticatedUserId,
+      role: authCtx.role,
+      hasProfile: !!authCtx.profile,
+      profileStudentId: authCtx.profile?.student_id || null,
+    });
+
     if (!authCtx.user || !authCtx.profile) {
       return NextResponse.json(
-        { error: 'Authentication required. Please sign in to access student portal.' },
+        { error: 'Authentication required. Please sign in to access the student portal.' },
         { status: 401 }
       );
     }
 
-    if (!isSupabaseAdminConfigured()) {
-      return NextResponse.json({ error: 'Database service is not configured.' }, { status: 503 });
+    // Strict role check: Must be STUDENT
+    if (authCtx.role !== 'STUDENT') {
+      return NextResponse.json(
+        { error: 'Access denied: The student portal is strictly restricted to student accounts.' },
+        { status: 403 }
+      );
     }
 
-    const adminClient = createAdminClient();
+    const dbClient = hasAdminSecret ? createAdminClient() : createServerSupabaseClient();
 
-    // 1. Locate student record linked to this user's profile ID
-    const { data: student, error: stdErr } = await adminClient
-      .from('students')
-      .select('id, full_name, roll_number, photo_url, active, status, status_reason, status_changed_at, class_id, class:class_id(id, name, section, academic_year)')
-      .eq('profile_id', authCtx.user.id)
-      .maybeSingle();
+    // 3. Resolve the actual database relationship (Item 2)
+    // auth.users.id -> public.profiles.id -> public.profiles.student_id -> public.students.id
+    let student: any = null;
 
-    if (stdErr) throw stdErr;
+    // Path A: Via public.profiles.student_id
+    if (authCtx.profile.student_id) {
+      const { data: stdById, error: stdByIdErr } = await dbClient
+        .from('students')
+        .select('*')
+        .eq('id', authCtx.profile.student_id)
+        .maybeSingle();
 
-    // 2. If no student profile linked yet, return enrollment requests status & available classes
+      if (stdByIdErr) {
+        console.warn('[Student Profile] Warning querying student by profile.student_id:', stdByIdErr.message);
+      } else if (stdById) {
+        student = stdById;
+      }
+    }
+
+    // Path B: Fallback via public.students.profile_id
     if (!student) {
-      const { data: requests } = await adminClient
-        .from('enrollment_requests')
-        .select(`
-          id,
-          class_id,
-          status,
-          requested_at,
-          reviewed_at,
-          review_reason,
-          submitted_photo_url,
-          message,
-          class:class_id(id, name, section, academic_year)
-        `)
-        .eq('user_id', authCtx.user.id)
-        .order('created_at', { ascending: false });
+      const { data: stdByProfile, error: stdByProfileErr } = await dbClient
+        .from('students')
+        .select('*')
+        .eq('profile_id', authCtx.user.id)
+        .maybeSingle();
 
-      const { data: availableClasses } = await adminClient
-        .from('classes')
-        .select('id, name, section, academic_year')
-        .order('name', { ascending: true });
+      if (stdByProfileErr) {
+        console.warn('[Student Profile] Warning querying student by students.profile_id:', stdByProfileErr.message);
+      } else if (stdByProfile) {
+        student = stdByProfile;
+
+        // Auto-synchronize profile.student_id if missing
+        if (!authCtx.profile.student_id && hasAdminSecret) {
+          try {
+            await dbClient
+              .from('profiles')
+              .update({ student_id: stdByProfile.id })
+              .eq('id', authCtx.user.id);
+          } catch {}
+        }
+      }
+    }
+
+    // Path C: Fallback via student email match
+    if (!student && authCtx.user.email) {
+      const { data: stdByEmail, error: stdByEmailErr } = await dbClient
+        .from('students')
+        .select('*')
+        .ilike('email', authCtx.user.email.trim())
+        .maybeSingle();
+
+      if (!stdByEmailErr && stdByEmail) {
+        student = stdByEmail;
+
+        // Link account both ways if service role is available
+        if (hasAdminSecret) {
+          try {
+            await dbClient
+              .from('students')
+              .update({ profile_id: authCtx.user.id })
+              .eq('id', stdByEmail.id);
+            await dbClient
+              .from('profiles')
+              .update({ student_id: stdByEmail.id })
+              .eq('id', authCtx.user.id);
+          } catch {}
+        }
+      }
+    }
+
+    // Safe Diagnostic Logging (Item 8)
+    console.log('[Student Profile] Student record resolution:', {
+      userId: authenticatedUserId,
+      foundStudent: !!student,
+      studentId: student?.id || null,
+      classId: student?.class_id || null,
+    });
+
+    // 4. Handle Unlinked / Unenrolled State Gracefully (Item 2, 5)
+    if (!student) {
+      let requests: any[] = [];
+      try {
+        const { data: reqsData, error: reqsErr } = await dbClient
+          .from('enrollment_requests')
+          .select(`
+            id,
+            class_id,
+            status,
+            requested_at,
+            reviewed_at,
+            review_reason,
+            submitted_photo_url,
+            message,
+            class:class_id(id, name, section, academic_year)
+          `)
+          .eq('user_id', authCtx.user.id)
+          .order('requested_at', { ascending: false });
+
+        if (!reqsErr && reqsData) {
+          requests = reqsData;
+        }
+      } catch (err: any) {
+        console.warn('[Student Profile] Enrollment requests query error (table may not exist yet):', err?.message);
+      }
+
+      let availableClasses: any[] = [];
+      try {
+        const { data: classesData, error: classesErr } = await dbClient
+          .from('classes')
+          .select('id, name, section, academic_year')
+          .order('name', { ascending: true });
+
+        if (!classesErr && classesData) {
+          availableClasses = classesData;
+        }
+      } catch (err: any) {
+        console.warn('[Student Profile] Classes query warning:', err?.message);
+      }
 
       return NextResponse.json({
+        status: 'NOT_ENROLLED',
         linked: false,
         profile: {
           id: authCtx.user.id,
           email: authCtx.user.email,
           fullName: authCtx.profile.full_name,
         },
-        requests: requests || [],
-        availableClasses: availableClasses || [],
-        message: 'Your account is active, but not yet linked to an enrolled student record.',
+        requests,
+        availableClasses,
+        message: 'Student profile not linked yet. Submit an enrollment request to get started.',
       });
     }
 
-    // 3. Fetch student's assigned teachers
-    const { data: classTeachers } = await adminClient
-      .from('class_teachers')
-      .select('teacher:teacher_id(id, full_name, email)')
-      .eq('class_id', student.class_id);
-
-    const teachers = (classTeachers || [])
-      .map((ct: any) => ct.teacher)
-      .filter(Boolean);
-
-    // 4. Fetch class subjects
-    const { data: classSubjectsRaw } = await adminClient
-      .from('class_subjects')
-      .select(`
-        id,
-        subject_id,
-        teacher_id,
-        subject:subject_id(id, name, code, description, active),
-        teacher:teacher_id(id, full_name, email)
-      `)
-      .eq('class_id', student.class_id);
-
-    const classSubjects = (classSubjectsRaw || []).map((cs: any) => ({
-      id: cs.id,
-      subjectId: cs.subject_id,
-      subject: cs.subject,
-      teacher: cs.teacher,
-    }));
-
-    // Create a subject lookup map
-    const subjectMap = new Map<string, any>();
-    classSubjects.forEach((cs) => {
-      if (cs.subject) {
-        subjectMap.set(cs.subject.id, {
-          ...cs.subject,
-          teacherName: cs.teacher?.full_name,
-        });
+    // 5. Enrolled Student: Resolve Class, Teachers, Subjects, Attendance
+    let classItem: any = null;
+    if (student.class_id) {
+      try {
+        const { data: clsData } = await dbClient
+          .from('classes')
+          .select('id, name, section, academic_year')
+          .eq('id', student.class_id)
+          .maybeSingle();
+        classItem = clsData;
+      } catch (err: any) {
+        console.warn('[Student Profile] Class lookup warning:', err?.message);
       }
-    });
+    }
 
-    // 5. Fetch student's attendance records
-    const { data: records, error: recErr } = await adminClient
-      .from('attendance')
-      .select('id, status, marked_at, session:session_id(id, date, source, subject_id)')
-      .eq('student_id', student.id)
-      .order('marked_at', { ascending: false });
+    // Fetch assigned teachers for student's class
+    let teachers: any[] = [];
+    if (student.class_id) {
+      try {
+        const { data: ctData } = await dbClient
+          .from('class_teachers')
+          .select('teacher:teacher_id(id, full_name, email)')
+          .eq('class_id', student.class_id);
 
-    if (recErr) throw recErr;
+        if (ctData) {
+          teachers = ctData.map((ct: any) => ct.teacher).filter(Boolean);
+        }
+      } catch (err: any) {
+        console.warn('[Student Profile] Teachers lookup warning:', err?.message);
+      }
+    }
 
-    const attendanceRecords = records || [];
+    // Fetch assigned subjects
+    let classSubjects: any[] = [];
+    const subjectMap = new Map<string, any>();
+
+    if (student.class_id) {
+      // Strategy 1: class_subjects modular mapping
+      try {
+        const { data: csRaw } = await dbClient
+          .from('class_subjects')
+          .select(`
+            id,
+            subject_id,
+            teacher_id,
+            subject:subject_id(id, name, code, description, active),
+            teacher:teacher_id(id, full_name, email)
+          `)
+          .eq('class_id', student.class_id);
+
+        if (csRaw && csRaw.length > 0) {
+          classSubjects = csRaw.map((cs: any) => ({
+            id: cs.id,
+            subjectId: cs.subject_id,
+            subject: cs.subject,
+            teacher: cs.teacher,
+          }));
+        }
+      } catch {}
+
+      // Strategy 2: Direct subjects table where class_id matches
+      if (classSubjects.length === 0) {
+        try {
+          const { data: directSubjects } = await dbClient
+            .from('subjects')
+            .select('id, name, code, description, active, teacher_id')
+            .eq('class_id', student.class_id);
+
+          if (directSubjects && directSubjects.length > 0) {
+            classSubjects = directSubjects.map((s: any) => ({
+              id: s.id,
+              subjectId: s.id,
+              subject: s,
+              teacher: null,
+            }));
+          }
+        } catch {}
+      }
+
+      classSubjects.forEach((cs) => {
+        if (cs.subject) {
+          subjectMap.set(cs.subject.id, {
+            ...cs.subject,
+            teacherName: cs.teacher?.full_name,
+          });
+        }
+      });
+    }
+
+    // Fetch student's attendance records (strictly filtered to student.id — Item 7)
+    let attendanceRecords: any[] = [];
+    try {
+      const { data: records, error: recErr } = await dbClient
+        .from('attendance')
+        .select('id, status, marked_at, session:session_id(id, date, source, subject_id)')
+        .eq('student_id', student.id)
+        .order('marked_at', { ascending: false });
+
+      if (!recErr && records) {
+        attendanceRecords = records;
+      }
+    } catch (err: any) {
+      console.warn('[Student Profile] Attendance lookup warning:', err?.message);
+    }
 
     let presentCount = 0;
     let absentCount = 0;
     let lateCount = 0;
 
-    // Track per-subject attendance: subjectId -> { present, absent, late, total }
     const subjectAttendanceMap = new Map<string, { present: number; absent: number; late: number; total: number }>();
 
-    // Initialize all assigned subjects in the map
     classSubjects.forEach((cs) => {
       if (cs.subjectId) {
         subjectAttendanceMap.set(cs.subjectId, { present: 0, absent: 0, late: 0, total: 0 });
@@ -141,7 +317,7 @@ export async function GET(req: NextRequest) {
       else if (isAbsent) absentCount++;
       else if (isLate) {
         lateCount++;
-        presentCount++; // late counts towards present
+        presentCount++;
       }
 
       const subjId = r.session?.subject_id;
@@ -209,9 +385,11 @@ export async function GET(req: NextRequest) {
       monthlyStats[monthKey].total++;
     });
 
-    const isRusticated = student.status === 'RUSTICATED';
+    const studentStatus = student.status || (student.active ? 'ACTIVE' : 'INACTIVE');
+    const isRusticated = studentStatus === 'RUSTICATED';
 
     return NextResponse.json({
+      status: 'ENROLLED',
       linked: true,
       isRusticated,
       student: {
@@ -220,10 +398,10 @@ export async function GET(req: NextRequest) {
         rollNumber: student.roll_number,
         photoUrl: student.photo_url,
         active: student.active,
-        status: student.status,
-        statusReason: student.status_reason,
-        statusChangedAt: student.status_changed_at,
-        class: student.class,
+        status: studentStatus,
+        statusReason: student.status_reason || null,
+        statusChangedAt: student.status_changed_at || null,
+        class: classItem,
       },
       teachers,
       assignedSubjects: classSubjects,
@@ -247,7 +425,15 @@ export async function GET(req: NextRequest) {
       history,
     });
   } catch (error: any) {
-    console.error('API /api/student/me error:', error);
-    return NextResponse.json({ error: error.message || 'Unable to retrieve student profile.' }, { status: 500 });
+    // Safe Diagnostic Logging (Item 8)
+    console.error('[Student Profile Error]', {
+      userId: authenticatedUserId,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+    });
+    return NextResponse.json(
+      { error: error?.message || 'Unable to retrieve student profile.' },
+      { status: 500 }
+    );
   }
 }

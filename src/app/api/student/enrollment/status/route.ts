@@ -26,43 +26,65 @@ export async function GET(req: NextRequest) {
       : createServerSupabaseClient();
 
     // 1. Fetch user's enrollment requests
-    const { data: requests, error: reqErr } = await adminClient
-      .from('enrollment_requests')
-      .select('*, class:class_id(id, name, section, academic_year), reviewer:reviewed_by(full_name, email)')
-      .eq('user_id', authCtx.user.id)
-      .order('requested_at', { ascending: false });
+    let requests: any[] = [];
+    try {
+      const { data: reqsData, error: reqErr } = await adminClient
+        .from('enrollment_requests')
+        .select('*, class:class_id(id, name, section, academic_year), reviewer:reviewed_by(full_name, email)')
+        .eq('user_id', authCtx.user.id)
+        .order('requested_at', { ascending: false });
 
-    if (reqErr) throw reqErr;
+      if (!reqErr && reqsData) {
+        requests = reqsData;
+      }
+    } catch (err: any) {
+      console.warn('[Enrollment Status] Warning querying enrollment_requests:', err?.message);
+    }
 
     // 2. Fetch available classes for enrollment
-    const { data: classes, error: classErr } = await adminClient
-      .from('classes')
-      .select('id, name, section, academic_year')
-      .order('name', { ascending: true });
+    let classes: any[] = [];
+    try {
+      const { data: clsData, error: classErr } = await adminClient
+        .from('classes')
+        .select('id, name, section, academic_year')
+        .order('name', { ascending: true });
 
-    if (classErr) throw classErr;
+      if (!classErr && clsData) {
+        classes = clsData;
+      }
+    } catch (err: any) {
+      console.warn('[Enrollment Status] Warning querying classes:', err?.message);
+    }
 
     // 3. Check active student record and enrollment
     let studentRecord = null;
     let activeEnrollment = null;
 
     if (authCtx.studentId) {
-      const { data: std } = await adminClient
-        .from('students')
-        .select('id, full_name, roll_number, photo_url, active, status, status_reason, class:class_id(id, name, section, academic_year)')
-        .eq('id', authCtx.studentId)
-        .maybeSingle();
+      try {
+        const { data: std } = await adminClient
+          .from('students')
+          .select('*')
+          .eq('id', authCtx.studentId)
+          .maybeSingle();
 
-      studentRecord = std;
+        studentRecord = std;
+      } catch (err: any) {
+        console.warn('[Enrollment Status] Warning querying student:', err?.message);
+      }
 
-      const { data: enrollment } = await adminClient
-        .from('student_enrollments')
-        .select('*, class:class_id(id, name, section, academic_year)')
-        .eq('student_id', authCtx.studentId)
-        .eq('status', 'ACTIVE')
-        .maybeSingle();
+      try {
+        const { data: enrollment } = await adminClient
+          .from('student_enrollments')
+          .select('*')
+          .eq('student_id', authCtx.studentId)
+          .eq('status', 'ACTIVE')
+          .maybeSingle();
 
-      activeEnrollment = enrollment;
+        activeEnrollment = enrollment;
+      } catch (err: any) {
+        console.warn('[Enrollment Status] Warning querying student_enrollments:', err?.message);
+      }
     }
 
     return NextResponse.json({

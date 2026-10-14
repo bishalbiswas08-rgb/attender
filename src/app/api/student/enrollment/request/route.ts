@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     if (!studentId) {
       const { data: existingStudent } = await adminClient
         .from('students')
-        .select('id, status')
+        .select('*')
         .eq('profile_id', authCtx.user.id)
         .maybeSingle();
 
@@ -167,23 +167,45 @@ export async function POST(req: NextRequest) {
         studentId = existingStudent.id;
       } else {
         // Create student record linked to this user's profile
-        const { data: newStudent, error: createStdErr } = await adminClient
+        const studentPayload: Record<string, any> = {
+          full_name: authCtx.profile.full_name,
+          email: authCtx.user.email,
+          profile_id: authCtx.user.id,
+          roll_number: 'PENDING',
+          class_id: classId,
+          photo_url: finalPhotoUrl || null,
+          active: false, // inactive until accepted by teacher/admin
+        };
+
+        let newStudent: any = null;
+        const { data: stdWithStatus, error: createStdErr } = await adminClient
           .from('students')
-          .insert({
-            full_name: authCtx.profile.full_name,
-            email: authCtx.user.email,
-            profile_id: authCtx.user.id,
-            roll_number: 'PENDING',
-            class_id: classId,
-            photo_url: finalPhotoUrl || null,
-            active: false, // inactive until accepted by teacher/admin
-            status: 'INACTIVE',
-          })
+          .insert({ ...studentPayload, status: 'INACTIVE' })
           .select('id')
-          .single();
+          .maybeSingle();
 
         if (createStdErr) {
-          throw new Error(`Failed to initialize student profile: ${createStdErr.message}`);
+          // If status column doesn't exist in table schema, retry without status
+          if (createStdErr.message.includes('status') || createStdErr.code === '42703') {
+            const { data: stdWithoutStatus, error: retryErr } = await adminClient
+              .from('students')
+              .insert(studentPayload)
+              .select('id')
+              .maybeSingle();
+
+            if (retryErr) {
+              throw new Error(`Failed to initialize student profile: ${retryErr.message}`);
+            }
+            newStudent = stdWithoutStatus;
+          } else {
+            throw new Error(`Failed to initialize student profile: ${createStdErr.message}`);
+          }
+        } else {
+          newStudent = stdWithStatus;
+        }
+
+        if (!newStudent?.id) {
+          throw new Error('Failed to initialize student profile record.');
         }
 
         studentId = newStudent.id;

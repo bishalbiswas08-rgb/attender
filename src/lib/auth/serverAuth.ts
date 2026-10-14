@@ -102,21 +102,36 @@ export async function getAuthenticatedUser(req?: NextRequest): Promise<AuthConte
     };
   }
 
-  const role = profile.role || 'STUDENT';
-
+  const role = profile?.role || 'STUDENT';
   let isRusticated = false;
-  let studentId: string | null = null;
+  let studentId: string | null = profile?.student_id || null;
 
   if (role === 'STUDENT' && authUser) {
-    const { data: std } = await adminClient
-      .from('students')
-      .select('id, status')
-      .eq('profile_id', authUser.id)
-      .maybeSingle();
+    let stdRecord: any = null;
 
-    if (std) {
-      studentId = std.id;
-      if (std.status === 'RUSTICATED') {
+    if (studentId) {
+      const { data: stdById } = await adminClient
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .maybeSingle();
+      if (stdById) stdRecord = stdById;
+    }
+
+    if (!stdRecord) {
+      const { data: stdByProfile } = await adminClient
+        .from('students')
+        .select('*')
+        .eq('profile_id', authUser.id)
+        .maybeSingle();
+      if (stdByProfile) {
+        stdRecord = stdByProfile;
+        studentId = stdByProfile.id;
+      }
+    }
+
+    if (stdRecord) {
+      if (stdRecord.status === 'RUSTICATED') {
         isRusticated = true;
       }
     }
