@@ -4,7 +4,7 @@ import { Student } from '@/lib/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
-import { getAuthenticatedUser, verifyClassAccess, recordAuditLog } from '@/lib/auth/serverAuth';
+import { getAuthenticatedUser, verifyClassAccess, verifySubjectAccess, recordAuditLog } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { imageBase64, mimeType, classId, className } = body;
+    const { imageBase64, mimeType, classId, className, subjectId } = body;
 
     if (!classId) {
       return NextResponse.json(
@@ -53,12 +53,22 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Verify authorization for the requested class (IDOR protection)
-    const hasAccess = await verifyClassAccess(authCtx, classId);
-    if (!hasAccess) {
+    const hasClassAccess = await verifyClassAccess(authCtx, classId);
+    if (!hasClassAccess) {
       return NextResponse.json(
         { error: 'Access denied: You are not authorized to scan this class.' },
         { status: 403 }
       );
+    }
+
+    if (subjectId) {
+      const hasSubjectAccess = await verifySubjectAccess(authCtx, classId, subjectId);
+      if (!hasSubjectAccess) {
+        return NextResponse.json(
+          { error: 'Access denied: You are not assigned to teach this subject in this class.' },
+          { status: 403 }
+        );
+      }
     }
 
     if (!imageBase64) {
@@ -69,6 +79,7 @@ export async function POST(req: NextRequest) {
     let resolvedClassName = className || 'Classroom';
 
     // 3. Fetch registered students from Supabase using authorized server query
+    // Strictly exclude rusticated and inactive students
     if (isSupabaseAdminConfigured() || isSupabaseConfigured()) {
       const supabase = isSupabaseAdminConfigured()
         ? createAdminClient()
@@ -91,6 +102,7 @@ export async function POST(req: NextRequest) {
         .select('*')
         .eq('class_id', classId)
         .eq('active', true)
+        .neq('status', 'RUSTICATED')
         .order('roll_number', { ascending: true });
 
       if (dbErr) {
@@ -101,9 +113,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (!studentsToRecognize || studentsToRecognize.length === 0) {
-      console.warn(`[attendance/scan] Aborting: No students enrolled in class "${classId}".`);
+      console.warn(`[attendance/scan] Aborting: No active eligible students in class "${classId}".`);
       return NextResponse.json(
-        { error: 'No active students enrolled in this class. Please add students before scanning.' },
+        { error: 'No active eligible students found in this class (rusticated/inactive students excluded).' },
         { status: 400 }
       );
     }
@@ -125,6 +137,7 @@ export async function POST(req: NextRequest) {
       details: {
         enrolledCount: studentsToRecognize.length,
         detectedCount: scanResult.detectedStudents?.length || 0,
+        subjectId: subjectId || null,
       },
     });
 

@@ -1,6 +1,10 @@
 export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT';
 
-export type AttendanceStatus = 'present' | 'absent' | 'late';
+export type StudentStatus = 'ACTIVE' | 'INACTIVE' | 'RUSTICATED' | 'SUSPENDED';
+
+export type EnrollmentStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type AttendanceSource = 'individual' | 'classroom_scan' | 'manual';
 
 export interface Profile {
@@ -54,6 +58,7 @@ export interface ClassItem {
   teacher?: Profile;
   teachers?: Profile[];
   student_count?: number;
+  subjects?: Subject[];
 }
 
 export interface Student {
@@ -66,17 +71,69 @@ export interface Student {
   reference_photos?: string[];
   email?: string | null;
   active: boolean;
+  status?: StudentStatus;
+  status_reason?: string | null;
+  status_changed_at?: string | null;
+  status_changed_by?: string | null;
   created_at: string;
   class?: ClassItem;
   attendance_percentage?: number;
 }
 
+export interface EnrollmentRequest {
+  id: string;
+  student_id?: string | null;
+  user_id: string;
+  class_id: string;
+  status: EnrollmentStatus;
+  requested_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  review_reason?: string | null;
+  submitted_photo_url?: string | null;
+  message?: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: Profile;
+  student?: Student;
+  class?: ClassItem;
+  reviewer?: Profile;
+}
+
+export interface StudentEnrollment {
+  id: string;
+  student_id: string;
+  class_id: string;
+  roll_number?: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'RUSTICATED';
+  enrolled_at: string;
+  ended_at?: string | null;
+  created_at: string;
+  student?: Student;
+  class?: ClassItem;
+}
+
 export interface Subject {
   id: string;
   name: string;
-  class_id: string;
-  teacher_id: string;
+  code?: string | null;
+  description?: string | null;
+  class_id?: string | null;
+  teacher_id?: string | null;
+  active?: boolean;
   created_at: string;
+  teacher?: Profile;
+}
+
+export interface ClassSubject {
+  id: string;
+  class_id: string;
+  subject_id: string;
+  teacher_id?: string | null;
+  created_at: string;
+  class?: ClassItem;
+  subject?: Subject;
+  teacher?: Profile;
 }
 
 export interface AttendanceSession {
@@ -89,6 +146,7 @@ export interface AttendanceSession {
   image_url?: string | null;
   created_at: string;
   class?: ClassItem;
+  subject?: Subject;
 }
 
 export interface AttendanceRecord {
@@ -99,6 +157,32 @@ export interface AttendanceRecord {
   marked_at: string;
   marked_by: string;
   student?: Student;
+  session?: AttendanceSession;
+}
+
+export interface BunkCalculation {
+  allowedBunks: number;
+  recoveryNeeded: number;
+  isSafe: boolean;
+  message: string;
+  currentPercentage: number | null;
+  requiredPercentage: number;
+  attended: number;
+  total: number;
+}
+
+export interface SubjectAttendanceStats {
+  subjectId: string;
+  subjectName: string;
+  subjectCode?: string | null;
+  teacherName?: string | null;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  totalClasses: number;
+  percentage: number | null;
+  isBelowThreshold: boolean;
+  bunkCalculation: BunkCalculation;
 }
 
 export interface BoundingBox {

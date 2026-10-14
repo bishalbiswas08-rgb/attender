@@ -19,13 +19,13 @@ export interface RecognitionProvider {
   recognize(input: RecognitionInput): Promise<ClassroomScanResult>;
 }
 
-// Primary model is gemini-3.8-flash per requirement.
-// Fallback models are verified active multimodal flash models on current Gemini API.
-const PRIMARY_MODEL = 'gemini-3.8-flash';
+// Primary model is gemini-2.5-flash per current multimodal standards (configurable via GEMINI_MODEL).
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const FALLBACK_MODELS = [
+  'gemini-2.0-flash',
+  'gemini-2.5-pro',
+  'gemini-3.8-flash',
   'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
 ];
 
 const MODEL_CASCADE = [PRIMARY_MODEL, ...FALLBACK_MODELS];

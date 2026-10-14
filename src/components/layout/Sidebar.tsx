@@ -17,6 +17,7 @@ import {
   X,
   LogOut,
   ShieldCheck,
+  UserPlus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -56,6 +57,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'Classes',
       href: '/dashboard/classes',
       icon: GraduationCap,
+    },
+    {
+      name: 'Enrollments',
+      href: '/dashboard/enrollments',
+      icon: UserPlus,
+      badge: 'Review',
     },
     {
       name: 'Reports & Export',

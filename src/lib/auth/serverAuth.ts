@@ -12,6 +12,8 @@ export interface AuthContext {
   isAdmin: boolean;
   isTeacher: boolean;
   isStudent: boolean;
+  isRusticated: boolean;
+  studentId?: string | null;
 }
 
 /**
@@ -51,6 +53,7 @@ export async function getAuthenticatedUser(req?: NextRequest): Promise<AuthConte
       isAdmin: false,
       isTeacher: false,
       isStudent: false,
+      isRusticated: false,
     };
   }
 
@@ -101,6 +104,24 @@ export async function getAuthenticatedUser(req?: NextRequest): Promise<AuthConte
 
   const role = profile.role || 'STUDENT';
 
+  let isRusticated = false;
+  let studentId: string | null = null;
+
+  if (role === 'STUDENT' && authUser) {
+    const { data: std } = await adminClient
+      .from('students')
+      .select('id, status')
+      .eq('profile_id', authUser.id)
+      .maybeSingle();
+
+    if (std) {
+      studentId = std.id;
+      if (std.status === 'RUSTICATED') {
+        isRusticated = true;
+      }
+    }
+  }
+
   return {
     user: authUser,
     profile,
@@ -108,6 +129,8 @@ export async function getAuthenticatedUser(req?: NextRequest): Promise<AuthConte
     isAdmin: role === 'ADMIN',
     isTeacher: role === 'TEACHER',
     isStudent: role === 'STUDENT',
+    isRusticated,
+    studentId,
   };
 }
 
@@ -158,6 +181,47 @@ export async function verifyClassAccess(
       .maybeSingle();
 
     return std?.class_id === classId;
+  }
+
+  return false;
+}
+
+/**
+ * Verifies if an authenticated user has authorization for the specified class and subject.
+ * - ADMIN: full access.
+ * - TEACHER: access if assigned to the class OR specifically assigned to the subject in class_subjects.
+ * - STUDENT: access only if student is enrolled in that class.
+ */
+export async function verifySubjectAccess(
+  authCtx: AuthContext,
+  classId: string,
+  subjectId: string
+): Promise<boolean> {
+  if (!authCtx.user || !authCtx.profile) return false;
+  if (authCtx.isAdmin) return true;
+
+  const adminClient = isSupabaseAdminConfigured()
+    ? createAdminClient()
+    : createServerSupabaseClient();
+
+  if (authCtx.isTeacher) {
+    // 1. Check if assigned specifically to this subject in class_subjects
+    const { data: cs } = await adminClient
+      .from('class_subjects')
+      .select('id')
+      .eq('class_id', classId)
+      .eq('subject_id', subjectId)
+      .eq('teacher_id', authCtx.user.id)
+      .maybeSingle();
+
+    if (cs) return true;
+
+    // 2. Check general class assignment
+    return verifyClassAccess(authCtx, classId);
+  }
+
+  if (authCtx.isStudent) {
+    return verifyClassAccess(authCtx, classId);
   }
 
   return false;

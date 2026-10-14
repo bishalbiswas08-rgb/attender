@@ -55,7 +55,14 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
   onRetake,
   onSaveComplete,
 }) => {
-  const { saveAttendanceSession, activeClassId } = useAttendance();
+  const {
+    saveAttendanceSession,
+    activeClassId,
+    activeSubjectId,
+    setActiveSubjectId,
+    activeSubject,
+    classAvailableSubjects,
+  } = useAttendance();
 
   // Teacher-adjustable status map: studentId -> 'present' | 'absent' | 'late'
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => {
@@ -131,6 +138,10 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
   const currentTotalFaces = totalFacesDetected ?? (faces.length > 0 ? faces.length : detectedStudents.length);
 
   const handleSaveAttendance = async () => {
+    if (classAvailableSubjects.length > 0 && !activeSubjectId) {
+      alert('Please select a subject before saving this attendance session.');
+      return;
+    }
     setIsSaving(true);
     try {
       const records = allClassStudents.map((s) => ({
@@ -140,6 +151,7 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
 
       await saveAttendanceSession({
         classId: activeClassId,
+        subjectId: activeSubjectId || undefined,
         date: new Date().toISOString().split('T')[0],
         source: 'classroom_scan',
         records,
@@ -174,6 +186,23 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
               <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <Sparkles className="w-3 h-3" /> Two-Stage Vision Pipeline
               </span>
+              {classAvailableSubjects.length > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-xs shrink-0">
+                  <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Subject:</span>
+                  <select
+                    value={activeSubjectId}
+                    onChange={(e) => setActiveSubjectId(e.target.value)}
+                    className="bg-transparent font-bold text-blue-800 dark:text-blue-200 text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="">General Attendance</option>
+                    {classAvailableSubjects.map((s) => (
+                      <option key={s.id} value={s.id} className="text-slate-900 bg-white dark:bg-slate-900 dark:text-white">
+                        {s.name} {s.code ? `(${s.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">
                 CLASSROOM SCAN RESULTS
               </h3>

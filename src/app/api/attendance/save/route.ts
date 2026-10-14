@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { createAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
-import { getAuthenticatedUser, verifyClassAccess, recordAuditLog } from '@/lib/auth/serverAuth';
+import { getAuthenticatedUser, verifyClassAccess, verifySubjectAccess, recordAuditLog } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = await req.json();
-    const { classId, date, source, records, imageUrl } = payload;
+    const { classId, subjectId, date, source, records, imageUrl } = payload;
 
     if (!classId || !date || !Array.isArray(records) || records.length === 0) {
       return NextResponse.json(
@@ -38,12 +38,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Verify authorization for the target class (IDOR protection)
-    const hasAccess = await verifyClassAccess(authCtx, classId);
-    if (!hasAccess) {
+    const hasClassAccess = await verifyClassAccess(authCtx, classId);
+    if (!hasClassAccess) {
       return NextResponse.json(
         { error: 'Access denied: You are not authorized to record attendance for this class.' },
         { status: 403 }
       );
+    }
+
+    // If subjectId is provided, verify subject access
+    if (subjectId) {
+      const hasSubjectAccess = await verifySubjectAccess(authCtx, classId, subjectId);
+      if (!hasSubjectAccess) {
+        return NextResponse.json(
+          { error: 'Access denied: You are not assigned to teach this subject in this class.' },
+          { status: 403 }
+        );
+      }
     }
 
     if (!isSupabaseConfigured() && !isSupabaseAdminConfigured()) {
@@ -57,11 +68,11 @@ export async function POST(req: NextRequest) {
       ? createAdminClient()
       : createServerSupabaseClient();
 
-    // 3. Verify that all submitted student IDs actually belong to this class
+    // 3. Verify that all submitted student IDs belong to this class AND are ACTIVE (not RUSTICATED)
     const studentIds = records.map((r: { studentId: string }) => r.studentId);
     const { data: validStudents, error: validStdErr } = await supabase
       .from('students')
-      .select('id')
+      .select('id, full_name, status, active')
       .eq('class_id', classId)
       .in('id', studentIds);
 
@@ -69,8 +80,8 @@ export async function POST(req: NextRequest) {
       throw new Error(`Database error verifying roster: ${validStdErr.message}`);
     }
 
-    const validStudentSet = new Set((validStudents || []).map((s: { id: string }) => s.id));
-    const invalidStudents = records.filter((r: { studentId: string }) => !validStudentSet.has(r.studentId));
+    const validStudentMap = new Map((validStudents || []).map((s: any) => [s.id, s]));
+    const invalidStudents = records.filter((r: { studentId: string }) => !validStudentMap.has(r.studentId));
 
     if (invalidStudents.length > 0) {
       return NextResponse.json(
@@ -78,6 +89,22 @@ export async function POST(req: NextRequest) {
           error: `Access denied: One or more student IDs in this submission do not belong to class ${classId}.`,
         },
         { status: 403 }
+      );
+    }
+
+    // Check for rusticated/inactive students
+    const rusticated = records.find((r: { studentId: string }) => {
+      const s = validStudentMap.get(r.studentId);
+      return s?.status === 'RUSTICATED' || s?.active === false;
+    });
+
+    if (rusticated) {
+      const s = validStudentMap.get(rusticated.studentId);
+      return NextResponse.json(
+        {
+          error: `Cannot record attendance for ${s?.full_name || 'student'}: Account is rusticated or inactive.`,
+        },
+        { status: 400 }
       );
     }
 
@@ -92,12 +119,20 @@ export async function POST(req: NextRequest) {
 
     const filteredRecords = records;
 
-    // 4. Check if session exists for this date and class
-    const { data: existingSessions, error: sessionFindErr } = await supabase
+    // 4. Check if session exists for this date, class, and subject
+    let sessionQuery = supabase
       .from('attendance_sessions')
       .select('id')
       .eq('class_id', classId)
       .eq('date', date);
+
+    if (subjectId) {
+      sessionQuery = sessionQuery.eq('subject_id', subjectId);
+    } else {
+      sessionQuery = sessionQuery.is('subject_id', null);
+    }
+
+    const { data: existingSessions, error: sessionFindErr } = await sessionQuery;
 
     if (sessionFindErr) {
       throw new Error(`Database error querying session: ${sessionFindErr.message}`);
@@ -114,6 +149,7 @@ export async function POST(req: NextRequest) {
         .from('attendance_sessions')
         .insert({
           class_id: classId,
+          subject_id: subjectId || null,
           date,
           created_by: currentUser.id,
           source: source || 'individual',
@@ -146,6 +182,7 @@ export async function POST(req: NextRequest) {
       targetId: sessionId,
       details: {
         classId,
+        subjectId: subjectId || null,
         date,
         source: source || 'individual',
         recordCount: rowsToInsert.length,

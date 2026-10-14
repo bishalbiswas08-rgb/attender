@@ -7,15 +7,19 @@ import { AttendanceStatsBar } from '@/components/attendance/AttendanceStatsBar';
 import { StudentProfileModal } from '@/components/students/StudentProfileModal';
 import { StudentModal } from '@/components/students/StudentModal';
 import { Student, AttendanceStatus } from '@/lib/types';
-import { UserCheck, Calendar, Search, Users, UserPlus } from 'lucide-react';
+import { UserCheck, Calendar, Search, Users, UserPlus, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import confetti from 'canvas-confetti';
+import { useToast } from '@/components/ui/Toast';
 
 export default function IndividualAttendancePage() {
   const {
     classStudents,
     activeClass,
     activeClassId,
+    activeSubjectId,
+    setActiveSubjectId,
+    classAvailableSubjects,
     classes,
     addStudent,
     saveAttendanceSession,
@@ -24,6 +28,7 @@ export default function IndividualAttendancePage() {
     records,
     sessions,
   } = useAttendance();
+  const { error: toastError } = useToast();
 
   const [targetDate, setTargetDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,10 +39,13 @@ export default function IndividualAttendancePage() {
   // Status mapping: studentId -> 'present' | 'absent' | 'late' | 'unmarked'
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus | 'unmarked'>>({});
 
-  // When class or target date changes, prefill with existing saved records for that date (if any)
+  // When class, target date, or subject changes, prefill with existing saved records for that date and subject
   useEffect(() => {
     const existingSession = sessions.find(
-      (s) => s.class_id === activeClassId && s.date === targetDate
+      (s) =>
+        s.class_id === activeClassId &&
+        s.date === targetDate &&
+        (activeSubjectId ? s.subject_id === activeSubjectId : !s.subject_id)
     );
 
     const initialMap: Record<string, AttendanceStatus | 'unmarked'> = {};
@@ -57,7 +65,7 @@ export default function IndividualAttendancePage() {
     }
 
     setStatusMap(initialMap);
-  }, [activeClassId, targetDate, classStudents, sessions, records]);
+  }, [activeClassId, activeSubjectId, targetDate, classStudents, sessions, records]);
 
   // Fast cycle toggle: UNMARKED -> PRESENT -> ABSENT -> UNMARKED
   const handleToggle = (studentId: string) => {
@@ -107,6 +115,10 @@ export default function IndividualAttendancePage() {
   // Save to Database
   const handleSave = async () => {
     if (classStudents.length === 0) return;
+    if (classAvailableSubjects.length > 0 && !activeSubjectId) {
+      toastError('Subject Required', 'Please select a subject before saving attendance.');
+      return;
+    }
     setIsSaving(true);
     try {
       const attendanceRecords = classStudents.map((s) => ({
@@ -116,6 +128,7 @@ export default function IndividualAttendancePage() {
 
       await saveAttendanceSession({
         classId: activeClassId,
+        subjectId: activeSubjectId || undefined,
         date: targetDate,
         source: 'individual',
         records: attendanceRecords,
@@ -163,8 +176,26 @@ export default function IndividualAttendancePage() {
           </p>
         </div>
 
-        {/* Date Selector & Search */}
+        {/* Date Selector, Subject Selector & Search */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto min-w-0">
+          {classAvailableSubjects.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold shadow-sm w-full sm:w-auto">
+              <BookOpen className="w-4 h-4 text-indigo-500 shrink-0" />
+              <select
+                value={activeSubjectId}
+                onChange={(e) => setActiveSubjectId(e.target.value)}
+                className="bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer text-xs font-bold"
+              >
+                <option value="">General Attendance</option>
+                {classAvailableSubjects.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name} {sub.code ? `(${sub.code})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex items-center justify-between sm:justify-start gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold shadow-sm w-full sm:w-auto">
             <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
             <input

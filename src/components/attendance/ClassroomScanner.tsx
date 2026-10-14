@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 export const ClassroomScanner: React.FC = () => {
-  const { classStudents, activeClass } = useAttendance();
+  const { classStudents, activeClass, activeSubjectId, setActiveSubjectId, classAvailableSubjects } = useAttendance();
   const { error, info } = useToast();
 
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -134,6 +134,11 @@ export const ClassroomScanner: React.FC = () => {
       return;
     }
 
+    if (classAvailableSubjects.length > 0 && !activeSubjectId) {
+      error('Subject Required', 'Please select a subject from the controls bar before scanning.');
+      return;
+    }
+
     if (!capturedImage) {
       error('No Image', 'Please capture or upload a classroom photograph first.');
       return;
@@ -191,6 +196,7 @@ export const ClassroomScanner: React.FC = () => {
             mimeType: 'image/jpeg',
             classId: activeClass?.id,
             className: `${activeClass?.name}-${activeClass?.section}`,
+            subjectId: activeSubjectId || undefined,
             students: classStudents,
           }),
         });
@@ -395,6 +401,29 @@ export const ClassroomScanner: React.FC = () => {
               <Button variant="ghost" size="sm" onClick={stopCamera} disabled={isScanning} className="w-full sm:w-auto">
                 Cancel Camera
               </Button>
+            )}
+
+            {/* Configurable Subject */}
+            {classAvailableSubjects.length > 0 && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs w-full sm:w-auto justify-between sm:justify-start">
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-[11px] text-slate-500 font-medium">Subject:</span>
+                </div>
+                <select
+                  value={activeSubjectId}
+                  onChange={(e) => setActiveSubjectId(e.target.value)}
+                  disabled={isScanning}
+                  className="bg-transparent text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[130px] truncate"
+                >
+                  <option value="">General</option>
+                  {classAvailableSubjects.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name} {sub.code ? `(${sub.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {/* Configurable Similarity Threshold */}

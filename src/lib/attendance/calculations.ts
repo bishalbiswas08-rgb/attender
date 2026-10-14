@@ -1,4 +1,4 @@
-import { AttendanceRecord, AttendanceSession, Student, StudentAttendanceStats } from '../types';
+import { AttendanceRecord, AttendanceSession, Student, StudentAttendanceStats, AttendanceStatus } from '../types';
 
 export const DEFAULT_THRESHOLD = 75;
 
@@ -34,7 +34,7 @@ export function calculateStudentStats(
   let presentCount = 0;
   let absentCount = 0;
   let lateCount = 0;
-  const recordsByDate: Record<string, 'present' | 'absent' | 'late'> = {};
+  const recordsByDate: Record<string, AttendanceStatus> = {};
 
   studentRecords.forEach((record) => {
     if (record.status === 'present') presentCount++;
@@ -133,4 +133,128 @@ export function filterRecordsByMonth(
     sessions.filter((s) => s.date.startsWith(yearMonth)).map((s) => s.id)
   );
   return records.filter((r) => sessionIdsInMonth.has(r.session_id));
+}
+
+/**
+ * Calculates dynamic Allowed Bunks or Needed Recovery Classes.
+ *
+ * Formulas:
+ * Let P = classes attended (present + late)
+ * Let T = total classes evaluated
+ * Let R = required attendance percentage as a decimal (e.g. 0.75 for 75%)
+ *
+ * 1. If currently SAFE (P / T >= R):
+ *    Find max B such that P / (T + B) >= R => B <= P / R - T
+ *    B = floor(P / R - T)
+ *
+ * 2. If currently AT RISK (P / T < R):
+ *    Find min A such that (P + A) / (T + A) >= R => A >= (R * T - P) / (1 - R)
+ *    A = ceil((R * T - P) / (1 - R))
+ */
+export function calculateBunks(
+  present: number,
+  total: number,
+  threshold = DEFAULT_THRESHOLD
+): import('../types').BunkCalculation {
+  const reqDecimal = threshold / 100;
+
+  if (total <= 0) {
+    return {
+      allowedBunks: 0,
+      recoveryNeeded: 0,
+      isSafe: true,
+      message: 'No classes held yet.',
+      currentPercentage: null,
+      requiredPercentage: threshold,
+      attended: 0,
+      total: 0,
+    };
+  }
+
+  const currentPct = (present / total) * 100;
+  const roundedPct = Math.round(currentPct * 100) / 100;
+
+  if (currentPct >= threshold) {
+    const maxBunks = Math.floor(present / reqDecimal - total);
+    const safeBunks = Math.max(0, maxBunks);
+    return {
+      allowedBunks: safeBunks,
+      recoveryNeeded: 0,
+      isSafe: true,
+      message:
+        safeBunks === 0
+          ? 'On threshold limit — do not miss next class.'
+          : `You're safe to miss ${safeBunks} more ${safeBunks === 1 ? 'class' : 'classes'}.`,
+      currentPercentage: roundedPct,
+      requiredPercentage: threshold,
+      attended: present,
+      total,
+    };
+  } else {
+    // Need consecutive attendances
+    const needed = Math.ceil((reqDecimal * total - present) / (1 - reqDecimal));
+    const safeNeeded = Math.max(1, needed);
+    return {
+      allowedBunks: 0,
+      recoveryNeeded: safeNeeded,
+      isSafe: false,
+      message: `Attend next ${safeNeeded} consecutive ${safeNeeded === 1 ? 'class' : 'classes'} to reach ${threshold}%.`,
+      currentPercentage: roundedPct,
+      requiredPercentage: threshold,
+      attended: present,
+      total,
+    };
+  }
+}
+
+/**
+ * Calculates subject-wise attendance statistics for a student.
+ */
+export function calculateSubjectStats(
+  studentId: string,
+  subject: import('../types').Subject,
+  records: AttendanceRecord[],
+  sessions: AttendanceSession[],
+  threshold = DEFAULT_THRESHOLD
+): import('../types').SubjectAttendanceStats {
+  // Find sessions for this subject
+  const subjectSessionMap = new Map(
+    sessions.filter((s) => s.subject_id === subject.id).map((s) => [s.id, s])
+  );
+
+  const studentSubjectRecords = records.filter(
+    (r) => r.student_id === studentId && subjectSessionMap.has(r.session_id)
+  );
+
+  let presentCount = 0;
+  let absentCount = 0;
+  let lateCount = 0;
+
+  studentSubjectRecords.forEach((r) => {
+    if (r.status === 'present') presentCount++;
+    else if (r.status === 'absent') absentCount++;
+    else if (r.status === 'late') {
+      lateCount++;
+      presentCount++; // late counts towards present
+    }
+  });
+
+  const totalClasses = studentSubjectRecords.length;
+  const percentage = calculatePercentage(presentCount, totalClasses);
+  const isBelowThreshold = percentage !== null && percentage < threshold;
+  const bunkCalculation = calculateBunks(presentCount, totalClasses, threshold);
+
+  return {
+    subjectId: subject.id,
+    subjectName: subject.name,
+    subjectCode: subject.code,
+    teacherName: subject.teacher?.full_name,
+    presentCount,
+    absentCount,
+    lateCount,
+    totalClasses,
+    percentage,
+    isBelowThreshold,
+    bunkCalculation,
+  };
 }

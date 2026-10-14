@@ -21,7 +21,10 @@ import {
   AlertTriangle,
   Link as LinkIcon,
   Unlink,
+  BookOpen,
+  Plus,
 } from 'lucide-react';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface InvitationItem {
   id: string;
@@ -47,10 +50,10 @@ interface AuditLogItem {
 
 export default function AdminManagementPage() {
   const router = useRouter();
-  const { user, isAdmin, authLoading, classes, students, refreshData } = useAttendance();
+  const { user, isAdmin, authLoading, classes, students, subjects, classSubjects, refreshData } = useAttendance();
   const { success, error: toastError } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'invitations' | 'teachers' | 'students' | 'audit'>('invitations');
+  const [activeTab, setActiveTab] = useState<'invitations' | 'students' | 'subjects' | 'audit'>('invitations');
 
   // Invitations State
   const [invitations, setInvitations] = useState<InvitationItem[]>([]);
@@ -70,6 +73,18 @@ export default function AdminManagementPage() {
   const [linkStudentId, setLinkStudentId] = useState<string>('');
   const [linkUserEmail, setLinkUserEmail] = useState<string>('');
   const [isLinking, setIsLinking] = useState(false);
+
+  // Subjects Management State
+  const [newSubjName, setNewSubjName] = useState('');
+  const [newSubjCode, setNewSubjCode] = useState('');
+  const [newSubjDesc, setNewSubjDesc] = useState('');
+  const [isCreatingSubj, setIsCreatingSubj] = useState(false);
+
+  const [assignSubjClassId, setAssignSubjClassId] = useState('');
+  const [assignSubjId, setAssignSubjId] = useState('');
+  const [assignSubjTeacherId, setAssignSubjTeacherId] = useState('');
+  const [isAssigningSubj, setIsAssigningSubj] = useState(false);
+  const [educators, setEducators] = useState<Array<{ id: string; full_name: string; email: string }>>([]);
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -113,6 +128,90 @@ export default function AdminManagementPage() {
       }
     }
   }, [isAdmin, classes, selectedClassId]);
+
+  useEffect(() => {
+    if (isAdmin && isSupabaseConfigured()) {
+      const supabase = createClient();
+      supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('role', ['TEACHER', 'ADMIN'])
+        .order('full_name', { ascending: true })
+        .then((res: any) => {
+          if (res.data) setEducators(res.data);
+        });
+    }
+  }, [isAdmin]);
+
+  const handleCreateSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubjName.trim()) return;
+    setIsCreatingSubj(true);
+    try {
+      const res = await fetch('/api/admin/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newSubjName.trim(),
+          code: newSubjCode.trim() || undefined,
+          description: newSubjDesc.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create subject.');
+      success('Subject Created', data.message || `Subject ${newSubjName} created.`);
+      setNewSubjName('');
+      setNewSubjCode('');
+      setNewSubjDesc('');
+      await refreshData();
+    } catch (err: any) {
+      toastError('Creation Failed', err.message);
+    } finally {
+      setIsCreatingSubj(false);
+    }
+  };
+
+  const handleAssignSubjectToClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignSubjClassId || !assignSubjId) {
+      toastError('Selection Required', 'Please choose both a class and a subject.');
+      return;
+    }
+    setIsAssigningSubj(true);
+    try {
+      const res = await fetch(`/api/classes/${assignSubjClassId}/subjects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjectId: assignSubjId,
+          teacherId: assignSubjTeacherId || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to assign subject.');
+      success('Subject Assigned', data.message || 'Subject mapped to class curriculum.');
+      await refreshData();
+    } catch (err: any) {
+      toastError('Assignment Failed', err.message);
+    } finally {
+      setIsAssigningSubj(false);
+    }
+  };
+
+  const handleRemoveSubjectFromClass = async (classId: string, subjectId: string) => {
+    if (!confirm('Are you sure you want to remove this subject from this class?')) return;
+    try {
+      const res = await fetch(`/api/classes/${classId}/subjects?subjectId=${subjectId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to remove subject.');
+      success('Subject Removed', data.message || 'Subject unassigned from class.');
+      await refreshData();
+    } catch (err: any) {
+      toastError('Removal Failed', err.message);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -267,6 +366,16 @@ export default function AdminManagementPage() {
           }`}
         >
           <LinkIcon className="w-4 h-4" /> Student Portal Links
+        </button>
+        <button
+          onClick={() => setActiveTab('subjects')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'subjects'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" /> Curriculum & Subjects
         </button>
         <button
           onClick={() => setActiveTab('audit')}
@@ -538,7 +647,269 @@ export default function AdminManagementPage() {
         </div>
       )}
 
-      {/* Tab 3: Security Audit Log */}
+      {/* Tab 3: Curriculum & Subjects Management */}
+      {activeTab === 'subjects' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Create Subject Card */}
+            <Card padding="lg" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Register Curriculum Subject
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Define an institutional subject. Subjects can then be assigned to one or more classrooms and assigned to designated educators.
+              </p>
+
+              <form onSubmit={handleCreateSubject} className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Subject Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSubjName}
+                    onChange={(e) => setNewSubjName(e.target.value)}
+                    placeholder="e.g. Mathematics or Computer Networks"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Subject Code
+                    </label>
+                    <input
+                      type="text"
+                      value={newSubjCode}
+                      onChange={(e) => setNewSubjCode(e.target.value)}
+                      placeholder="e.g. CS-301"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      value={newSubjDesc}
+                      onChange={(e) => setNewSubjDesc(e.target.value)}
+                      placeholder="Optional notes"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  isLoading={isCreatingSubj}
+                  className="w-full text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Subject to Catalog
+                </Button>
+              </form>
+            </Card>
+
+            {/* Assign Subject to Class Card */}
+            <Card padding="lg" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Map Subject to Class Curriculum
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Link a registered subject to a specific class and optionally assign an educator to teach it.
+              </p>
+
+              <form onSubmit={handleAssignSubjectToClass} className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Select Class <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={assignSubjClassId}
+                    onChange={(e) => setAssignSubjClassId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Choose Class...</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name} ({cls.section})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Select Subject <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={assignSubjId}
+                    onChange={(e) => setAssignSubjId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Choose Subject...</option>
+                    {subjects.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name} {sub.code ? `(${sub.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Designated Educator (Optional)
+                  </label>
+                  <select
+                    value={assignSubjTeacherId}
+                    onChange={(e) => setAssignSubjTeacherId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Class Primary Teacher (Default)</option>
+                    {educators.map((ed) => (
+                      <option key={ed.id} value={ed.id}>
+                        {ed.full_name} ({ed.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  isLoading={isAssigningSubj}
+                  className="w-full text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Assign Subject to Class
+                </Button>
+              </form>
+            </Card>
+          </div>
+
+          {/* Class Subjects Mappings Table */}
+          <Card padding="none" className="overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                  Active Class Curriculum Mappings
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Subjects currently assigned to classrooms for subject-wise attendance tracking.
+                </p>
+              </div>
+              <span className="text-xs text-slate-400">{classSubjects.length} mappings</span>
+            </div>
+
+            {classSubjects.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                No class subjects mapped yet. Use the form above to assign subjects to classes.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Class</th>
+                      <th className="py-3 px-4">Subject</th>
+                      <th className="py-3 px-4">Subject Code</th>
+                      <th className="py-3 px-4">Designated Educator</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {classSubjects.map((cs) => {
+                      const classObj = classes.find((c) => c.id === cs.class_id);
+                      return (
+                        <tr key={cs.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                          <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200">
+                            {classObj ? `${classObj.name} (${classObj.section})` : cs.class_id}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-indigo-600 dark:text-indigo-400">
+                            {cs.subject?.name || 'Subject'}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                            {cs.subject?.code || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                            {cs.teacher?.full_name || 'Class Teacher'}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleRemoveSubjectFromClass(cs.class_id, cs.subject_id)}
+                              className="text-xs font-bold text-rose-500 hover:underline inline-flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Remove
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          {/* Global Subject Catalog */}
+          <Card padding="none" className="overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                Institutional Subject Catalog
+              </h4>
+              <span className="text-xs text-slate-400">{subjects.length} subjects registered</span>
+            </div>
+
+            {subjects.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                No subjects in catalog. Register your first subject above.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Subject Name</th>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {subjects.map((sub) => (
+                      <tr key={sub.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                          {sub.name}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                          {sub.code || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">
+                          {sub.description || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Tab 4: Security Audit Log */}
       {activeTab === 'audit' && (
         <Card padding="none" className="overflow-hidden">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">

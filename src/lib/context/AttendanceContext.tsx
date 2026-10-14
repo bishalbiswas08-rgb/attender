@@ -14,13 +14,16 @@ import {
   AttendanceStatus,
   AttendanceSource,
   UserRole,
+  Subject,
+  ClassSubject,
 } from '../types';
 import { calculateStudentStats, calculateClassStats, DEFAULT_THRESHOLD } from '../attendance/calculations';
 import { createClient, isSupabaseConfigured } from '../supabase/client';
 import { useToast } from '@/components/ui/Toast';
 
-interface SaveSessionPayload {
+export interface SaveSessionPayload {
   classId: string;
+  subjectId?: string;
   date: string;
   source: AttendanceSource;
   records: { studentId: string; status: AttendanceStatus }[];
@@ -37,6 +40,12 @@ interface AttendanceContextType {
   isStudent: boolean;
   classes: ClassItem[];
   students: Student[];
+  subjects: Subject[];
+  classSubjects: ClassSubject[];
+  activeSubjectId: string;
+  setActiveSubjectId: (id: string) => void;
+  activeSubject: Subject | undefined;
+  classAvailableSubjects: Subject[];
   sessions: AttendanceSession[];
   records: AttendanceRecord[];
   recentActivities: RecentActivity[];
@@ -52,6 +61,9 @@ interface AttendanceContextType {
   addStudent: (std: Omit<Student, 'id' | 'created_at'>) => Promise<void>;
   updateStudent: (std: Student) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
+  updateStudentRollNumber: (studentId: string, rollNumber: string) => Promise<void>;
+  rusticateStudent: (studentId: string, reason: string) => Promise<void>;
+  reinstateStudent: (studentId: string) => Promise<void>;
   saveAttendanceSession: (payload: SaveSessionPayload) => Promise<void>;
   getStudentStats: (studentId: string) => StudentAttendanceStats | undefined;
   dashboardMetrics: DashboardMetrics;
@@ -95,6 +107,9 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
   const [user, setUser] = useState<Profile | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
+  const [activeSubjectId, setActiveSubjectId] = useState<string>('');
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
@@ -146,7 +161,34 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
       if (studentsErr) throw studentsErr;
       setStudents((dbStudents as Student[]) || []);
 
-      // 3. Fetch attendance sessions
+      // 3. Fetch subjects
+      const { data: dbSubjects, error: subjectsErr } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (!subjectsErr && dbSubjects) {
+        setSubjects(dbSubjects as Subject[]);
+      }
+
+      // 4. Fetch class_subjects mappings
+      const { data: dbClassSubjects, error: classSubjectsErr } = await supabase
+        .from('class_subjects')
+        .select(`
+          id,
+          class_id,
+          subject_id,
+          teacher_id,
+          created_at,
+          subject:subject_id(id, name, code, description, active),
+          teacher:teacher_id(id, full_name, email)
+        `);
+
+      if (!classSubjectsErr && dbClassSubjects) {
+        setClassSubjects(dbClassSubjects as unknown as ClassSubject[]);
+      }
+
+      // 5. Fetch attendance sessions
       const { data: dbSessions, error: sessionsErr } = await supabase
         .from('attendance_sessions')
         .select('*')
@@ -155,7 +197,7 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
       if (sessionsErr) throw sessionsErr;
       setSessions((dbSessions as AttendanceSession[]) || []);
 
-      // 4. Fetch attendance records
+      // 6. Fetch attendance records
       const { data: dbRecords, error: recordsErr } = await supabase
         .from('attendance')
         .select('*');
@@ -193,9 +235,6 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     const supabase = createClient();
     let isMounted = true;
 
-    // Requirement 9:
-    // const { data: { session } } = await supabase.auth.getSession()
-    // and supabase.auth.onAuthStateChange(...)
     const initAuth = async () => {
       try {
         const {
@@ -216,6 +255,8 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
             setUser(null);
             setClasses([]);
             setStudents([]);
+            setSubjects([]);
+            setClassSubjects([]);
             setSessions([]);
             setRecords([]);
           }
@@ -233,34 +274,37 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, currentSession: Session | null) => {
-      if (!isMounted) return;
+        if (!isMounted) return;
 
-      setSession(currentSession);
+        setSession(currentSession);
 
-      if (currentSession?.user) {
-        try {
-          const profile = await syncProfileForUser(supabase, currentSession.user);
-          if (isMounted) {
-            setUser(profile);
-            await fetchDatabaseData();
+        if (currentSession?.user) {
+          try {
+            const profile = await syncProfileForUser(supabase, currentSession.user);
+            if (isMounted) {
+              setUser(profile);
+              await fetchDatabaseData();
+            }
+          } catch (err) {
+            console.error('[AttendanceContext] Auth change profile sync error:', err);
           }
-        } catch (err) {
-          console.error('[AttendanceContext] Auth change profile sync error:', err);
+        } else {
+          if (isMounted) {
+            setUser(null);
+            setClasses([]);
+            setStudents([]);
+            setSubjects([]);
+            setClassSubjects([]);
+            setSessions([]);
+            setRecords([]);
+          }
         }
-      } else {
-        if (isMounted) {
-          setUser(null);
-          setClasses([]);
-          setStudents([]);
-          setSessions([]);
-          setRecords([]);
-        }
-      }
 
-      if (isMounted) {
-        setAuthLoading(false);
+        if (isMounted) {
+          setAuthLoading(false);
+        }
       }
-    });
+    );
 
     return () => {
       isMounted = false;
@@ -282,10 +326,45 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     [classes, activeClassId]
   );
 
+  // Exclude rusticated and inactive students from active roster
   const classStudents = useMemo(
-    () => (activeClass ? students.filter((s) => s.class_id === activeClass.id && s.active) : []),
+    () => (activeClass ? students.filter((s) => s.class_id === activeClass.id && s.active && s.status !== 'RUSTICATED') : []),
     [students, activeClass]
   );
+
+  // Available subjects for current active class
+  const classAvailableSubjects = useMemo(() => {
+    if (!activeClassId) return [];
+    const classLinks = classSubjects.filter((cs) => cs.class_id === activeClassId);
+    if (classLinks.length === 0) {
+      // Fallback: all active subjects
+      return subjects.filter((s) => s.active !== false);
+    }
+    const subjMap = new Map<string, Subject>();
+    classLinks.forEach((cs) => {
+      if (cs.subject) {
+        subjMap.set(cs.subject.id, cs.subject);
+      }
+    });
+    return Array.from(subjMap.values());
+  }, [classSubjects, subjects, activeClassId]);
+
+  const activeSubject = useMemo(
+    () => subjects.find((s) => s.id === activeSubjectId),
+    [subjects, activeSubjectId]
+  );
+
+  // Auto-default activeSubjectId to first subject of class when available
+  useEffect(() => {
+    if (classAvailableSubjects.length > 0) {
+      setActiveSubjectId((prev) => {
+        const stillValid = classAvailableSubjects.some((s) => s.id === prev);
+        return stillValid && prev ? prev : classAvailableSubjects[0].id;
+      });
+    } else {
+      setActiveSubjectId('');
+    }
+  }, [classAvailableSubjects]);
 
   // Add Class to Supabase (Admin Only)
   const addClass = async (cls: Omit<ClassItem, 'id' | 'created_at'>) => {
@@ -298,15 +377,12 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     }
 
     const supabase = createClient();
-
-    // 1. Authenticated user ID must come directly from supabase.auth.getUser()
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
     if (!authUser) {
       throw new Error('Authentication required: You must be logged in to create a class.');
     }
 
-    // 2. Ensure a matching profile row exists in public.profiles for this UUID
     const { data: profileCheck } = await supabase
       .from('profiles')
       .select('id')
@@ -322,7 +398,6 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
       });
     }
 
-    // 3. Insert class linked to the authenticated user UUID
     const { data, error } = await supabase
       .from('classes')
       .insert({
@@ -338,7 +413,6 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
 
     const newClass = data as ClassItem;
 
-    // Associate creator in class_teachers
     try {
       await supabase.from('class_teachers').insert({
         class_id: newClass.id,
@@ -401,7 +475,6 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
       }
       return remaining;
     });
-    // Remove associated students from local state
     setStudents((prev) => prev.filter((s) => s.class_id !== id));
     success('Class Deleted', 'Class removed from Supabase.');
   };
@@ -426,6 +499,7 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
         email: std.email || null,
         photo_url: std.photo_url || null,
         active: std.active,
+        status: std.status || 'ACTIVE',
       })
       .select('*')
       .single();
@@ -495,6 +569,61 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     success('Student Removed', 'Student was removed from class roster.');
   };
 
+  // Update Roll Number via Teacher API (Teacher or Admin)
+  const updateStudentRollNumber = async (studentId: string, rollNumber: string) => {
+    const res = await fetch('/api/teacher/students/roll-number', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId, rollNumber }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Unable to update roll number.');
+
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, roll_number: rollNumber.trim() } : s))
+    );
+    success('Roll Number Assigned', data.message || `Roll number set to ${rollNumber}`);
+  };
+
+  // Rusticate Student (Admin Only)
+  const rusticateStudent = async (studentId: string, reason: string) => {
+    const res = await fetch('/api/admin/students/rusticate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId, reason }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to rusticate student.');
+
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.id === studentId ? { ...s, status: 'RUSTICATED', active: false, status_reason: reason } : s
+      )
+    );
+    success('Student Rusticated', data.message || 'Student rusticated and active enrollment revoked.');
+  };
+
+  // Reinstate Student (Admin Only)
+  const reinstateStudent = async (studentId: string) => {
+    const res = await fetch('/api/admin/students/reinstate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to reinstate student.');
+
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.id === studentId ? { ...s, status: 'ACTIVE', active: true, status_reason: null } : s
+      )
+    );
+    success('Student Reinstated', data.message || 'Student reinstated to active status.');
+  };
+
   // Save Attendance Session to Supabase via server API route
   const saveAttendanceSession = async (payload: SaveSessionPayload) => {
     const res = await fetch('/api/attendance/save', {
@@ -545,6 +674,8 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
       setUser(null);
       setClasses([]);
       setStudents([]);
+      setSubjects([]);
+      setClassSubjects([]);
       setSessions([]);
       setRecords([]);
       success('Signed Out', 'You have been safely signed out.');
@@ -621,6 +752,12 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
         isStudent,
         classes,
         students,
+        subjects,
+        classSubjects,
+        activeSubjectId,
+        setActiveSubjectId,
+        activeSubject,
+        classAvailableSubjects,
         sessions,
         records,
         recentActivities,
@@ -636,6 +773,9 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
         addStudent,
         updateStudent,
         deleteStudent,
+        updateStudentRollNumber,
+        rusticateStudent,
+        reinstateStudent,
         saveAttendanceSession,
         getStudentStats,
         dashboardMetrics,
