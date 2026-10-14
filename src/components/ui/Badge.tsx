@@ -67,10 +67,42 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
     );
   }
 
+  if (role === 'STUDENT') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+        <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+        STUDENT
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
       <GraduationCap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       TEACHER
+    </span>
+  );
+};
+
+interface BadgeProps {
+  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info';
+  className?: string;
+}
+
+export const Badge: React.FC<BadgeProps> = ({ children, variant = 'primary', className = '' }) => {
+  const variantStyles = {
+    primary: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    secondary: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    success: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    danger: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+    warning: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    info: 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${variantStyles[variant]} ${className}`}>
+      {children}
     </span>
   );
 };

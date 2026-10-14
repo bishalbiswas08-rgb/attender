@@ -19,7 +19,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   onDelete,
   onViewProfile,
 }) => {
-  const { getStudentStats, threshold, classes } = useAttendance();
+  const { getStudentStats, threshold, classes, isAdmin } = useAttendance();
   const stats = getStudentStats(student.id);
   const percentage = stats ? stats.percentage : null;
 
@@ -85,22 +85,24 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           <Calendar className="w-3.5 h-3.5" /> View Profile
         </button>
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onEdit(student)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Edit student"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDelete(student.id)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-            title="Delete student"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onEdit(student)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Edit student"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onDelete(student.id)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+              title="Delete student"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ export default function ClassesPage() {
     updateClass,
     deleteClass,
     user,
+    isAdmin,
   } = useAttendance();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,17 +41,19 @@ export default function ClassesPage() {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={() => {
-            setEditingClass(null);
-            setIsModalOpen(true);
-          }}
-          leftIcon={<Plus className="w-4 h-4" />}
-          className="font-bold shadow-md shadow-indigo-600/20"
-        >
-          CREATE CLASS
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingClass(null);
+              setIsModalOpen(true);
+            }}
+            leftIcon={<Plus className="w-4 h-4" />}
+            className="font-bold shadow-md shadow-indigo-600/20"
+          >
+            CREATE CLASS
+          </Button>
+        )}
       </div>
 
       {/* Empty State when zero classes */}
@@ -61,26 +64,30 @@ export default function ClassesPage() {
           </div>
           <div>
             <h4 className="text-xl font-bold text-slate-800 dark:text-slate-200">
-              No classes yet.
+              {isAdmin ? 'No classes yet.' : 'No assigned classes.'}
             </h4>
             <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mt-1">
-              Add your first classroom section (e.g. Class XII - Section A) to start enrolling students and recording attendance.
+              {isAdmin
+                ? 'Add your first classroom section (e.g. Class XII - Section A) to start enrolling students and recording attendance.'
+                : 'You are not assigned to any classes yet. Contact an administrator to link your account to classes.'}
             </p>
           </div>
-          <div className="pt-2">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => {
-                setEditingClass(null);
-                setIsModalOpen(true);
-              }}
-              leftIcon={<Plus className="w-5 h-5" />}
-              className="font-bold shadow-md shadow-indigo-600/20"
-            >
-              CREATE CLASS
-            </Button>
-          </div>
+          {isAdmin && (
+            <div className="pt-2">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => {
+                  setEditingClass(null);
+                  setIsModalOpen(true);
+                }}
+                leftIcon={<Plus className="w-5 h-5" />}
+                className="font-bold shadow-md shadow-indigo-600/20"
+              >
+                CREATE CLASS
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         /* Classes Grid */
@@ -104,25 +111,27 @@ export default function ClassesPage() {
                       {cls.section}
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          setEditingClass(cls);
-                          setIsModalOpen(true);
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        title="Edit class"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setClassToDelete(cls.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                        title="Delete class"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingClass(cls);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          title="Edit class"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setClassToDelete(cls.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Delete class"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4">

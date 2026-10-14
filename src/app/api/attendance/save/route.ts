@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { createAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
+import { getAuthenticatedUser, verifyClassAccess, recordAuditLog } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Enforce authentication and RBAC authorization server-side
+    const authCtx = await getAuthenticatedUser(req);
+    if (!authCtx.user || !authCtx.profile) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please sign in to record attendance.' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = authCtx.user;
+
+    if (authCtx.isStudent) {
+      return NextResponse.json(
+        { error: 'Access forbidden. Students cannot record or modify attendance.' },
+        { status: 403 }
+      );
+    }
+
     const payload = await req.json();
     const { classId, date, source, records, imageUrl } = payload;
 
@@ -18,9 +37,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 2. Verify authorization for the target class (IDOR protection)
+    const hasAccess = await verifyClassAccess(authCtx, classId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Access denied: You are not authorized to record attendance for this class.' },
+        { status: 403 }
+      );
+    }
+
     if (!isSupabaseConfigured() && !isSupabaseAdminConfigured()) {
       return NextResponse.json(
-        { error: 'Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local to save attendance.' },
+        { error: 'Supabase is not configured. Add credentials in .env.local to save attendance.' },
         { status: 503 }
       );
     }
@@ -29,7 +57,42 @@ export async function POST(req: NextRequest) {
       ? createAdminClient()
       : createServerSupabaseClient();
 
-    // Check if session exists for this date and class
+    // 3. Verify that all submitted student IDs actually belong to this class
+    const studentIds = records.map((r: { studentId: string }) => r.studentId);
+    const { data: validStudents, error: validStdErr } = await supabase
+      .from('students')
+      .select('id')
+      .eq('class_id', classId)
+      .in('id', studentIds);
+
+    if (validStdErr) {
+      throw new Error(`Database error verifying roster: ${validStdErr.message}`);
+    }
+
+    const validStudentSet = new Set((validStudents || []).map((s: { id: string }) => s.id));
+    const invalidStudents = records.filter((r: { studentId: string }) => !validStudentSet.has(r.studentId));
+
+    if (invalidStudents.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Access denied: One or more student IDs in this submission do not belong to class ${classId}.`,
+        },
+        { status: 403 }
+      );
+    }
+
+    const validStatuses = ['present', 'absent', 'late'];
+    const hasInvalidStatus = records.some((r: { status: string }) => !validStatuses.includes(r.status));
+    if (hasInvalidStatus) {
+      return NextResponse.json(
+        { error: 'Invalid attendance status. Status must be present, absent, or late.' },
+        { status: 400 }
+      );
+    }
+
+    const filteredRecords = records;
+
+    // 4. Check if session exists for this date and class
     const { data: existingSessions, error: sessionFindErr } = await supabase
       .from('attendance_sessions')
       .select('id')
@@ -52,6 +115,7 @@ export async function POST(req: NextRequest) {
         .insert({
           class_id: classId,
           date,
+          created_by: currentUser.id,
           source: source || 'individual',
           image_url: imageUrl || null,
         })
@@ -62,22 +126,37 @@ export async function POST(req: NextRequest) {
       sessionId = newSession.id;
     }
 
-    // Insert new attendance rows
-    const rowsToInsert = records.map((r: { studentId: string; status: string }) => ({
+    // 5. Insert new attendance rows with verified marked_by
+    const rowsToInsert = filteredRecords.map((r: { studentId: string; status: string }) => ({
       session_id: sessionId,
       student_id: r.studentId,
       status: r.status,
+      marked_by: currentUser.id,
       marked_at: new Date().toISOString(),
     }));
 
     const { error: insertErr } = await supabase.from('attendance').insert(rowsToInsert);
     if (insertErr) throw insertErr;
 
+    // 6. Record audit log
+    await recordAuditLog({
+      actorId: currentUser.id,
+      action: 'ATTENDANCE_SAVED',
+      targetType: 'ATTENDANCE_SESSION',
+      targetId: sessionId,
+      details: {
+        classId,
+        date,
+        source: source || 'individual',
+        recordCount: rowsToInsert.length,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       sessionId,
       count: rowsToInsert.length,
-      message: 'Attendance saved successfully to Supabase database.',
+      message: 'Attendance saved successfully with verified authorization.',
     });
   } catch (error: any) {
     console.error('API /api/attendance/save error:', error);

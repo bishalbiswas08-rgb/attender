@@ -16,6 +16,7 @@ import {
   Sparkles,
   X,
   LogOut,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,7 +27,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut } = useAttendance();
+  const { signOut, isAdmin } = useAttendance();
 
   const navItems = [
     {
@@ -67,6 +68,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Bot,
       badge: 'Gemini',
     },
+    ...(isAdmin
+      ? [
+          {
+            name: 'Admin & Security',
+            href: '/dashboard/admin',
+            icon: ShieldCheck,
+            badge: 'Admin',
+          },
+        ]
+      : []),
     {
       name: 'Settings',
       href: '/dashboard/settings',

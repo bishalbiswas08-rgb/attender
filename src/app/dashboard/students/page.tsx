@@ -19,6 +19,7 @@ export default function StudentsPage() {
     addStudent,
     updateStudent,
     deleteStudent,
+    isAdmin,
   } = useAttendance();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,17 +59,19 @@ export default function StudentsPage() {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={() => {
-            setEditingStudent(null);
-            setIsModalOpen(true);
-          }}
-          leftIcon={<UserPlus className="w-4 h-4" />}
-          className="font-bold shrink-0 shadow-md shadow-indigo-600/20"
-        >
-          ADD STUDENT
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingStudent(null);
+              setIsModalOpen(true);
+            }}
+            leftIcon={<UserPlus className="w-4 h-4" />}
+            className="font-bold shrink-0 shadow-md shadow-indigo-600/20"
+          >
+            ADD STUDENT
+          </Button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -163,29 +166,31 @@ export default function StudentsPage() {
                 : 'Try adjusting your search query or class filter.'}
             </p>
           </div>
-          <div className="pt-2">
-            {classes.length === 0 ? (
-              <Button
-                variant="primary"
-                onClick={() => (window.location.href = '/dashboard/classes')}
-                leftIcon={<UserPlus className="w-4 h-4" />}
-              >
-                CREATE CLASS FIRST
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setEditingStudent(null);
-                  setIsModalOpen(true);
-                }}
-                leftIcon={<UserPlus className="w-4 h-4" />}
-                className="font-bold shadow-md shadow-indigo-600/20"
-              >
-                ADD STUDENT
-              </Button>
-            )}
-          </div>
+          {isAdmin && (
+            <div className="pt-2">
+              {classes.length === 0 ? (
+                <Button
+                  variant="primary"
+                  onClick={() => (window.location.href = '/dashboard/classes')}
+                  leftIcon={<UserPlus className="w-4 h-4" />}
+                >
+                  CREATE CLASS FIRST
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setEditingStudent(null);
+                    setIsModalOpen(true);
+                  }}
+                  leftIcon={<UserPlus className="w-4 h-4" />}
+                  className="font-bold shadow-md shadow-indigo-600/20"
+                >
+                  ADD STUDENT
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

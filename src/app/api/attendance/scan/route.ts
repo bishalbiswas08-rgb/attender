@@ -4,6 +4,7 @@ import { Student } from '@/lib/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { getAuthenticatedUser, verifyClassAccess, recordAuditLog } from '@/lib/auth/serverAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,24 @@ function sanitizeErrorMessage(msg: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Enforce authentication and RBAC authorization server-side
+    const authCtx = await getAuthenticatedUser(req);
+    if (!authCtx.user || !authCtx.profile) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please sign in to access scanner services.' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = authCtx.user;
+
+    if (authCtx.isStudent) {
+      return NextResponse.json(
+        { error: 'Access forbidden. Students cannot perform classroom scans.' },
+        { status: 403 }
+      );
+    }
+
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your-gemini-api-key') {
       return NextResponse.json(
         { error: 'Gemini AI is not configured. Please set GEMINI_API_KEY in your server environment variables.' },
@@ -24,14 +43,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { imageBase64, mimeType, classId, students: clientStudents, className } = body;
-
-    console.log(`[attendance/scan] Stage 1: Received scan request for classId="${classId || 'unspecified'}"`);
+    const { imageBase64, mimeType, classId, className } = body;
 
     if (!classId) {
       return NextResponse.json(
         { error: 'Class ID is required to scan attendance. Please select a class.' },
         { status: 400 }
+      );
+    }
+
+    // 2. Verify authorization for the requested class (IDOR protection)
+    const hasAccess = await verifyClassAccess(authCtx, classId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Access denied: You are not authorized to scan this class.' },
+        { status: 403 }
       );
     }
 
@@ -42,13 +68,12 @@ export async function POST(req: NextRequest) {
     let studentsToRecognize: Student[] = [];
     let resolvedClassName = className || 'Classroom';
 
-    // Authenticate and fetch registered students from Supabase
+    // 3. Fetch registered students from Supabase using authorized server query
     if (isSupabaseAdminConfigured() || isSupabaseConfigured()) {
       const supabase = isSupabaseAdminConfigured()
         ? createAdminClient()
         : createServerSupabaseClient();
 
-      // Fetch class details if class name is not provided
       if (!className) {
         const { data: classData } = await supabase
           .from('classes')
@@ -73,8 +98,6 @@ export async function POST(req: NextRequest) {
       } else if (dbStudents && dbStudents.length > 0) {
         studentsToRecognize = dbStudents as Student[];
       }
-    } else if (Array.isArray(clientStudents) && clientStudents.length > 0) {
-      studentsToRecognize = clientStudents;
     }
 
     if (!studentsToRecognize || studentsToRecognize.length === 0) {
@@ -85,12 +108,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call server-side isolated recognition pipeline
+    // 4. Call server-side isolated recognition pipeline
     const scanResult = await recognizeClassroomAttendance({
       imageBase64: imageBase64.replace(/^data:image\/\w+;base64,/, ''),
       mimeType: mimeType || 'image/jpeg',
       students: studentsToRecognize,
       className: resolvedClassName,
+    });
+
+    // 5. Audit log
+    await recordAuditLog({
+      actorId: currentUser.id,
+      action: 'CLASSROOM_SCAN_PERFORMED',
+      targetType: 'CLASS',
+      targetId: classId,
+      details: {
+        enrolledCount: studentsToRecognize.length,
+        detectedCount: scanResult.detectedStudents?.length || 0,
+      },
     });
 
     return NextResponse.json(scanResult);
@@ -99,7 +134,6 @@ export async function POST(req: NextRequest) {
     const safeError = sanitizeErrorMessage(rawMsg);
     console.error('[attendance/scan] Handler error:', safeError);
 
-    // Requirement 5: Return clean user-facing error if transient issues persist
     if (
       safeError.includes('temporarily busy') ||
       safeError.includes('503') ||
@@ -120,4 +154,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

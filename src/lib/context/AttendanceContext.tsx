@@ -32,7 +32,9 @@ interface AttendanceContextType {
   authLoading: boolean;
   signOut: () => Promise<void>;
   user: Profile | null;
-  setUserRole: (role: UserRole) => void;
+  isAdmin: boolean;
+  isTeacher: boolean;
+  isStudent: boolean;
   classes: ClassItem[];
   students: Student[];
   sessions: AttendanceSession[];
@@ -73,26 +75,16 @@ async function syncProfileForUser(supabase: any, authUser: User): Promise<Profil
     return profileData as Profile;
   }
 
-  const newProfile: Profile = {
+  // Safe fallback if profile trigger is delayed: default strictly to STUDENT
+  const safeProfile: Profile = {
     id: authUser.id,
-    full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Educator',
+    full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
     email: authUser.email || '',
-    role: (authUser.user_metadata?.role as UserRole) || 'TEACHER',
+    role: 'STUDENT',
     created_at: new Date().toISOString(),
   };
 
-  const { data: upsertedProfile } = await supabase
-    .from('profiles')
-    .upsert({
-      id: newProfile.id,
-      full_name: newProfile.full_name,
-      email: newProfile.email,
-      role: newProfile.role,
-    })
-    .select('*')
-    .maybeSingle();
-
-  return (upsertedProfile as Profile) || newProfile;
+  return safeProfile;
 }
 
 export function AttendanceProvider({ children }: { children: React.ReactNode }) {
@@ -281,18 +273,9 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     localStorage.setItem('attender_threshold', String(val));
   };
 
-  const setUserRole = async (role: UserRole) => {
-    if (user) {
-      setUser({ ...user, role });
-      if (isSupabaseLive) {
-        try {
-          const supabase = createClient();
-          await supabase.from('profiles').update({ role }).eq('id', user.id);
-        } catch {}
-      }
-      info('Role Updated', `Switched role to ${role}`);
-    }
-  };
+  const isAdmin = user?.role === 'ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
+  const isStudent = user?.role === 'STUDENT';
 
   const activeClass = useMemo(
     () => classes.find((c) => c.id === activeClassId) || (classes.length > 0 ? classes[0] : undefined),
@@ -304,10 +287,14 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     [students, activeClass]
   );
 
-  // Add Class to Supabase
+  // Add Class to Supabase (Admin Only)
   const addClass = async (cls: Omit<ClassItem, 'id' | 'created_at'>) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can create classes.');
     }
 
     const supabase = createClient();
@@ -350,15 +337,30 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     if (error) throw error;
 
     const newClass = data as ClassItem;
+
+    // Associate creator in class_teachers
+    try {
+      await supabase.from('class_teachers').insert({
+        class_id: newClass.id,
+        teacher_id: authUser.id,
+      });
+    } catch (ctErr) {
+      console.warn('[AttendanceContext] class_teachers insert notice:', ctErr);
+    }
+
     setClasses((prev) => [...prev, newClass]);
     setActiveClassId(newClass.id);
     success('Class Created', `${newClass.name}-${newClass.section} added successfully.`);
   };
 
-  // Update Class in Supabase
+  // Update Class in Supabase (Admin Only)
   const updateClass = async (cls: ClassItem) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can modify classes.');
     }
 
     const supabase = createClient();
@@ -377,10 +379,14 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     success('Class Updated', `${cls.name}-${cls.section} updated successfully.`);
   };
 
-  // Delete Class from Supabase
+  // Delete Class from Supabase (Admin Only)
   const deleteClass = async (id: string) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can delete classes.');
     }
 
     const supabase = createClient();
@@ -400,10 +406,14 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     success('Class Deleted', 'Class removed from Supabase.');
   };
 
-  // Add Student to Supabase
+  // Add Student to Supabase (Admin Only)
   const addStudent = async (std: Omit<Student, 'id' | 'created_at'>) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can register students.');
     }
 
     const supabase = createClient();
@@ -436,10 +446,14 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     success('Student Enrolled', `${newStudent.full_name} registered in class roster.`);
   };
 
-  // Update Student in Supabase
+  // Update Student in Supabase (Admin Only)
   const updateStudent = async (std: Student) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can modify student master records.');
     }
 
     const supabase = createClient();
@@ -461,10 +475,14 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
     success('Student Updated', `${std.full_name}'s profile was updated.`);
   };
 
-  // Delete Student from Supabase
+  // Delete Student from Supabase (Admin Only)
   const deleteStudent = async (id: string) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and credentials in .env.local.');
+    }
+
+    if (user?.role !== 'ADMIN') {
+      throw new Error('Unauthorized: Only administrators can delete students.');
     }
 
     const supabase = createClient();
@@ -598,7 +616,9 @@ export function AttendanceProvider({ children }: { children: React.ReactNode }) 
         authLoading,
         signOut,
         user,
-        setUserRole,
+        isAdmin,
+        isTeacher,
+        isStudent,
         classes,
         students,
         sessions,

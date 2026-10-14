@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'TEACHER';
+export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT';
 
 export type AttendanceStatus = 'present' | 'absent' | 'late';
 export type AttendanceSource = 'individual' | 'classroom_scan' | 'manual';
@@ -8,7 +8,40 @@ export interface Profile {
   full_name: string;
   email: string;
   role: UserRole;
+  student_id?: string | null;
   created_at: string;
+}
+
+export interface ClassTeacher {
+  id: string;
+  class_id: string;
+  teacher_id: string;
+  created_at: string;
+  teacher?: Profile;
+  class?: ClassItem;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: 'ADMIN' | 'TEACHER';
+  token: string;
+  invited_by?: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  inviter?: Profile;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_id?: string | null;
+  details?: Record<string, any>;
+  created_at: string;
+  actor?: Profile;
 }
 
 export interface ClassItem {
@@ -19,6 +52,7 @@ export interface ClassItem {
   teacher_id?: string | null;
   created_at: string;
   teacher?: Profile;
+  teachers?: Profile[];
   student_count?: number;
 }
 
@@ -27,6 +61,7 @@ export interface Student {
   full_name: string;
   roll_number: string;
   class_id: string;
+  profile_id?: string | null;
   photo_url: string | null;
   reference_photos?: string[];
   email?: string | null;

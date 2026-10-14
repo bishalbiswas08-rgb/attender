@@ -11,14 +11,18 @@ import { Sparkles, ShieldAlert, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 function DashboardGuard({ children }: { children: React.ReactNode }) {
-  const { session, authLoading } = useAttendance();
+  const { session, authLoading, isStudent } = useAttendance();
   const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace('/login');
+    if (!authLoading) {
+      if (!session) {
+        router.replace('/login');
+      } else if (isStudent) {
+        router.replace('/student');
+      }
     }
-  }, [authLoading, session, router]);
+  }, [authLoading, session, isStudent, router]);
 
   // Loading state while restoring session from Supabase
   if (authLoading) {

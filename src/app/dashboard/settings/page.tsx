@@ -26,7 +26,7 @@ export default function SettingsPage() {
     threshold,
     setThreshold,
     user,
-    setUserRole,
+    isAdmin,
     isSupabaseLive,
     isGeminiLive,
     signOut,
@@ -166,16 +166,25 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <RoleBadge role={user?.role || 'TEACHER'} />
-            <button
-              onClick={() => setUserRole(user?.role === 'ADMIN' ? 'TEACHER' : 'ADMIN')}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline px-2 py-1"
-            >
-              Toggle to {user?.role === 'ADMIN' ? 'TEACHER' : 'ADMIN'}
-            </button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/dashboard/admin')}
+                leftIcon={<Shield className="w-3.5 h-3.5 text-purple-600" />}
+                className="text-xs font-bold"
+              >
+                Admin Security Center
+              </Button>
+            )}
           </div>
         </div>
+
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          Account roles are secured via cryptographic invitations, database RLS, and server-side authorization. Roles cannot be modified from the client.
+        </p>
 
         {/* Visible Logout Section */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
