@@ -143,9 +143,9 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
       </div>
 
       {/* Floating HUD Pill: Shows accurate total faces located vs recognized vs unknown */}
-      <div className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-white text-xs backdrop-blur-md shadow-lg">
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-        <span className="font-semibold">
+      <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 max-w-[calc(100%-1rem)] sm:max-w-none flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-white text-[11px] sm:text-xs backdrop-blur-md shadow-lg truncate">
+        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <span className="font-semibold truncate">
           {totalLocated} face{totalLocated === 1 ? '' : 's'} located
           {unknownCount > 0 ? ` (${recognizedCount} recognized, ${unknownCount} unknown)` : ''}
         </span>

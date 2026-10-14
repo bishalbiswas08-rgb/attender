@@ -27,27 +27,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   }[color];
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
           {title}
         </span>
-        <div className={`p-2 rounded-xl border ${colorStyles}`}>{icon}</div>
+        <div className={`p-2 rounded-xl border shrink-0 ${colorStyles}`}>{icon}</div>
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+      <div className="mt-3 flex items-baseline gap-2 flex-wrap">
+        <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
           {value}
         </span>
         {badge && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
             {badge}
           </span>
         )}
       </div>
 
       {subtitle && (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate max-w-full">
           {subtitle}
         </p>
       )}

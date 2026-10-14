@@ -41,12 +41,12 @@ export const StudentAttendanceCard: React.FC<StudentAttendanceCardProps> = ({
   return (
     <div
       onClick={() => onToggle(student.id)}
-      className={`group relative select-none rounded-2xl border p-4 transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md ${getCardStyle()}`}
+      className={`group relative select-none rounded-2xl border p-3.5 sm:p-4 w-full min-w-0 overflow-hidden transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md ${getCardStyle()}`}
     >
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3 sm:gap-3.5 min-w-0">
         {/* Student Photo with indicator */}
         <div className="relative shrink-0">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-800 shadow-sm">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-800 shadow-sm">
             {student.photo_url ? (
               <img
                 src={student.photo_url}
@@ -54,32 +54,32 @@ export const StudentAttendanceCard: React.FC<StudentAttendanceCardProps> = ({
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center font-bold text-slate-400 text-lg">
+              <div className="w-full h-full flex items-center justify-center font-bold text-slate-400 text-base sm:text-lg">
                 {student.full_name.charAt(0)}
               </div>
             )}
           </div>
 
           {/* Quick status badge indicator overlay */}
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
             {status === 'present' && (
               <span className="w-full h-full rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
               </span>
             )}
             {status === 'absent' && (
               <span className="w-full h-full rounded-full bg-rose-500 flex items-center justify-center text-white">
-                <X className="w-3.5 h-3.5 stroke-[3]" />
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
               </span>
             )}
             {status === 'late' && (
               <span className="w-full h-full rounded-full bg-amber-500 flex items-center justify-center text-white">
-                <Clock className="w-3.5 h-3.5 stroke-[3]" />
+                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
               </span>
             )}
             {status === 'unmarked' && (
               <span className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500">
-                <HelpCircle className="w-3 h-3" />
+                <HelpCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </span>
             )}
           </div>
@@ -98,7 +98,7 @@ export const StudentAttendanceCard: React.FC<StudentAttendanceCardProps> = ({
                   e.stopPropagation();
                   onViewProfile(student);
                 }}
-                className="p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity touch-manipulation"
                 title="View student profile & calendar"
               >
                 <Eye className="w-3.5 h-3.5" />
@@ -106,12 +106,12 @@ export const StudentAttendanceCard: React.FC<StudentAttendanceCardProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">
             <span>Roll No: <strong className="text-slate-700 dark:text-slate-200">{student.roll_number}</strong></span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">Attendance:</span>
+          <div className="flex items-center gap-2 mt-1.5 sm:mt-2 flex-wrap">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">Attendance:</span>
             <ThresholdBadge percentage={currentPercentage} threshold={threshold} />
           </div>
         </div>
@@ -125,37 +125,37 @@ export const StudentAttendanceCard: React.FC<StudentAttendanceCardProps> = ({
         <button
           type="button"
           onClick={() => onSetStatus(student.id, 'present')}
-          className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`flex-1 py-1.5 sm:py-1 px-2 min-h-[36px] rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 touch-manipulation ${
             status === 'present'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700'
           }`}
         >
-          <Check className="w-3 h-3" /> P
+          <Check className="w-3.5 h-3.5" /> P
         </button>
 
         <button
           type="button"
           onClick={() => onSetStatus(student.id, 'absent')}
-          className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`flex-1 py-1.5 sm:py-1 px-2 min-h-[36px] rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 touch-manipulation ${
             status === 'absent'
               ? 'bg-rose-600 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700'
           }`}
         >
-          <X className="w-3 h-3" /> A
+          <X className="w-3.5 h-3.5" /> A
         </button>
 
         <button
           type="button"
           onClick={() => onSetStatus(student.id, 'late')}
-          className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`flex-1 py-1.5 sm:py-1 px-2 min-h-[36px] rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 touch-manipulation ${
             status === 'late'
               ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700'
           }`}
         >
-          <Clock className="w-3 h-3" /> L
+          <Clock className="w-3.5 h-3.5" /> L
         </button>
       </div>
     </div>

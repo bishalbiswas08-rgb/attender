@@ -288,8 +288,8 @@ export const ClassroomScanner: React.FC = () => {
       )}
 
       {/* Camera / Capture Stage */}
-      <Card padding="none" className="overflow-hidden border-2 border-dashed border-slate-200 dark:border-slate-800">
-        <div className="relative min-h-[380px] bg-slate-950 flex flex-col items-center justify-center p-6 text-white text-center">
+      <Card padding="none" className="overflow-hidden border-2 border-dashed border-slate-200 dark:border-slate-800 w-full min-w-0">
+        <div className="relative min-h-[260px] sm:min-h-[380px] bg-slate-950 flex flex-col items-center justify-center p-3 sm:p-6 text-white text-center">
           {/* Active Live Video Stream */}
           {isCameraActive && (
             <div className="relative w-full max-w-3xl rounded-xl overflow-hidden aspect-video shadow-2xl">
@@ -322,12 +322,12 @@ export const ClassroomScanner: React.FC = () => {
 
           {/* Empty State when no camera and no image */}
           {!isCameraActive && !capturedImage && (
-            <div className="max-w-md py-10 space-y-4">
-              <div className="w-16 h-16 rounded-3xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
-                <Camera className="w-8 h-8" />
+            <div className="max-w-md py-6 sm:py-10 space-y-3 sm:space-y-4 px-2">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
+                <Camera className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-white">Capture or Upload Classroom Photo</h4>
+                <h4 className="text-base sm:text-lg font-bold text-white">Capture or Upload Classroom Photo</h4>
                 <p className="text-xs text-slate-400 mt-1">
                   Ensure good classroom lighting and frontal view of students&apos; faces.
                 </p>
@@ -337,16 +337,16 @@ export const ClassroomScanner: React.FC = () => {
 
           {/* Scanning Progress Overlay */}
           {isScanning && (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20">
-              <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin mb-4" />
-              <h4 className="text-lg font-bold text-white mb-2">Analyzing Classroom Attendance</h4>
-              <p className="text-xs text-indigo-300 font-mono animate-pulse">{scanStep}</p>
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 z-20">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin mb-4" />
+              <h4 className="text-base sm:text-lg font-bold text-white mb-2">Analyzing Classroom Attendance</h4>
+              <p className="text-xs text-indigo-300 font-mono text-center px-4 animate-pulse">{scanStep}</p>
             </div>
           )}
         </div>
 
         {/* Action Controls Bar */}
-        <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-3 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {!isCameraActive ? (
               <Button
@@ -392,15 +392,17 @@ export const ClassroomScanner: React.FC = () => {
             </Button>
 
             {isCameraActive && (
-              <Button variant="ghost" size="sm" onClick={stopCamera} disabled={isScanning}>
+              <Button variant="ghost" size="sm" onClick={stopCamera} disabled={isScanning} className="w-full sm:w-auto">
                 Cancel Camera
               </Button>
             )}
 
             {/* Configurable Similarity Threshold */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs">
-              <Sliders className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">Strictness:</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-[11px] text-slate-500 font-medium">Strictness:</span>
+              </div>
               <select
                 value={similarityThreshold}
                 onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
@@ -415,7 +417,7 @@ export const ClassroomScanner: React.FC = () => {
           </div>
 
           {/* Main SCAN CLASSROOM Button */}
-          <div className="w-full sm:w-auto flex flex-col items-end">
+          <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end">
             <Button
               variant="scan"
               size="lg"
@@ -423,7 +425,7 @@ export const ClassroomScanner: React.FC = () => {
               isLoading={isScanning}
               disabled={!capturedImage || isScanning || !activeClass || classStudents.length === 0}
               leftIcon={<Sparkles className="w-5 h-5 text-amber-300 animate-spin" />}
-              className="w-full sm:w-auto font-black tracking-wide px-8 text-base shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+              className="w-full sm:w-auto font-black tracking-wide px-6 sm:px-8 text-base shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
               SCAN CLASSROOM
             </Button>

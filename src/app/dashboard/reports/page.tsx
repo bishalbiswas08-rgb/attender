@@ -117,7 +117,7 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <FileBarChart2 className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            <FileBarChart2 className="w-7 h-7 text-indigo-600 dark:text-indigo-400 shrink-0" />
             Attendance Reports
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -126,12 +126,13 @@ export default function ReportsPage() {
         </div>
 
         {/* Export Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <Button
             variant="outline"
             size="md"
             onClick={handlePrint}
             leftIcon={<Printer className="w-4 h-4 text-slate-600" />}
+            className="flex-1 sm:flex-initial"
           >
             Print / PDF
           </Button>
@@ -141,7 +142,7 @@ export default function ReportsPage() {
             size="md"
             onClick={exportCSV}
             leftIcon={<Download className="w-4 h-4" />}
-            className="font-bold shadow-md shadow-indigo-600/20"
+            className="flex-1 sm:flex-initial font-bold shadow-md shadow-indigo-600/20"
           >
             EXPORT CSV
           </Button>
@@ -149,14 +150,14 @@ export default function ReportsPage() {
       </div>
 
       {/* Filter and Mode Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
         {/* Report Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs w-full md:w-auto">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs w-full md:w-auto overflow-x-auto">
           {(['daily', 'weekly', 'monthly', 'student'] as const).map((type) => (
             <button
               key={type}
               onClick={() => setReportType(type)}
-              className={`flex-1 md:flex-initial px-3.5 py-1.5 rounded-lg font-bold capitalize transition-colors ${
+              className={`flex-1 md:flex-initial px-3 sm:px-3.5 py-1.5 rounded-lg font-bold capitalize transition-colors whitespace-nowrap ${
                 reportType === type
                   ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400'
@@ -169,8 +170,11 @@ export default function ReportsPage() {
 
         {/* Class and Range Pickers */}
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px] text-slate-500 font-medium sm:hidden">Month:</span>
+            </div>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -187,26 +191,26 @@ export default function ReportsPage() {
       </div>
 
       {/* Overview Metric Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 min-w-0">
           <span className="text-xs font-bold text-slate-500 uppercase">Class Average</span>
           <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
             {dashboardMetrics.overallPercentage !== null ? `${dashboardMetrics.overallPercentage}%` : 'N/A'}
           </p>
         </div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 min-w-0">
           <span className="text-xs font-bold text-slate-500 uppercase">Total Enrolled</span>
           <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
             {classStudents.length}
           </p>
         </div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 min-w-0">
           <span className="text-xs font-bold text-slate-500 uppercase">Meeting Threshold</span>
           <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
             {classStudents.length - dashboardMetrics.studentsBelowThreshold}
           </p>
         </div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 min-w-0">
           <span className="text-xs font-bold text-slate-500 uppercase">Below {threshold}%</span>
           <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
             {dashboardMetrics.studentsBelowThreshold}
@@ -236,7 +240,7 @@ export default function ReportsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
                   <th
@@ -244,7 +248,7 @@ export default function ReportsPage() {
                       setSortField('roll');
                       setSortAsc(!sortAsc);
                     }}
-                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200"
+                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 whitespace-nowrap"
                   >
                     <div className="flex items-center gap-1">
                       <span>Roll</span>
@@ -256,39 +260,39 @@ export default function ReportsPage() {
                       setSortField('name');
                       setSortAsc(!sortAsc);
                     }}
-                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200"
+                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 whitespace-nowrap"
                   >
                     <div className="flex items-center gap-1">
                       <span>Student Name</span>
                       <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
-                  <th className="py-3 px-4 text-center">Present</th>
-                  <th className="py-3 px-4 text-center">Absent</th>
-                  <th className="py-3 px-4 text-center">Late</th>
-                  <th className="py-3 px-4 text-center">Total</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Present</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Absent</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Late</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Total</th>
                   <th
                     onClick={() => {
                       setSortField('percentage');
                       setSortAsc(!sortAsc);
                     }}
-                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 text-center"
+                    className="py-3 px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 text-center whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1">
                       <span>Attendance %</span>
                       <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
-                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {rows.map((row) => (
                   <tr key={row.student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-700 dark:text-slate-300">
+                    <td className="py-3 px-4 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {row.roll}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
                           {row.student.photo_url ? (
@@ -304,22 +308,22 @@ export default function ReportsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-center text-emerald-700 dark:text-emerald-400 font-bold">
+                    <td className="py-3 px-4 text-center text-emerald-700 dark:text-emerald-400 font-bold whitespace-nowrap">
                       {row.present}
                     </td>
-                    <td className="py-3 px-4 text-center text-rose-700 dark:text-rose-400 font-bold">
+                    <td className="py-3 px-4 text-center text-rose-700 dark:text-rose-400 font-bold whitespace-nowrap">
                       {row.absent}
                     </td>
-                    <td className="py-3 px-4 text-center text-amber-600 font-bold">
+                    <td className="py-3 px-4 text-center text-amber-600 font-bold whitespace-nowrap">
                       {row.late}
                     </td>
-                    <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-400">
+                    <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {row.total}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
                       <ThresholdBadge percentage={row.percentage} threshold={threshold} />
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
                       {row.isBelow ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
                           <AlertTriangle className="w-3 h-3" /> At Risk

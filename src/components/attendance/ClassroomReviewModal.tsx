@@ -168,13 +168,13 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl">
       <div className="space-y-6">
         {/* Header summary */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-100 dark:border-slate-800 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <Sparkles className="w-3 h-3" /> Two-Stage Vision Pipeline
               </span>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">
                 CLASSROOM SCAN RESULTS
               </h3>
             </div>
@@ -184,20 +184,20 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
           </div>
 
           {/* Counts overview */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-300">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs">
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-300">
               {allClassStudents.length} Registered
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               {presentList.length} Present
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
               {absentList.length} Absent
             </div>
             {unknownFaces.length > 0 && (
-              <div className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 {unknownFaces.length} Unknown {unknownFaces.length === 1 ? 'Face' : 'Faces'}
               </div>
@@ -365,13 +365,13 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                          <span className="text-xs font-bold text-amber-900 dark:text-amber-200 shrink-0">
                             Face #{idx + 1}
                           </span>
                           <select
                             onChange={(e) => resolveUnknownFace(uf.id, e.target.value)}
                             defaultValue=""
-                            className="text-xs font-medium px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="text-xs font-medium px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 max-w-[170px] sm:max-w-xs truncate"
                           >
                             <option value="" disabled>
                               Assign to enrolled student...
@@ -426,7 +426,7 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
                           Present
                         </span>
@@ -476,7 +476,7 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded">
                           Absent
                         </span>
@@ -493,7 +493,7 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
           <Button
             variant="outline"
             onClick={onRetake}
@@ -503,7 +503,7 @@ export const ClassroomReviewModal: React.FC<ClassroomReviewModalProps> = ({
             RETAKE PHOTO
           </Button>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               variant="secondary"
               onClick={onClose}

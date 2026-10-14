@@ -167,8 +167,8 @@ export const StudentModal: React.FC<StudentModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Photo Upload Area */}
-        <div className="space-y-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-4">
+        <div className="space-y-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 min-w-0">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left min-w-0">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0 relative flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm">
               {photoUrl ? (
                 <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -182,9 +182,9 @@ export const StudentModal: React.FC<StudentModalProps> = ({
               )}
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 cursor-pointer transition-colors border border-indigo-200 dark:border-indigo-800">
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5 shrink-0" />
                 <span>{photoUrl ? 'Change Primary Photo' : 'Upload Student Photo'}</span>
                 <input
                   type="file"
@@ -258,7 +258,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
         </div>
 
         {/* Roll Number & Class */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Roll Number *
@@ -283,7 +283,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
             <select
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer truncate"
             >
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -326,11 +326,11 @@ export const StudentModal: React.FC<StudentModalProps> = ({
         </div>
 
         {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting}>
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" isLoading={isSubmitting}>
+          <Button variant="primary" type="submit" isLoading={isSubmitting} className="w-full sm:w-auto font-bold">
             {studentToEdit ? 'Save Changes' : 'Enroll Student'}
           </Button>
         </div>

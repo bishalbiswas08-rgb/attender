@@ -15,6 +15,43 @@ export const dynamic = 'force-dynamic';
  * 4. Only works when NO administrator currently exists in public.profiles.
  * 5. Protected against repeated abuse; permanently shuts down once an admin is active.
  */
+export async function GET(req: NextRequest) {
+  try {
+    if (!isSupabaseAdminConfigured()) {
+      return NextResponse.json(
+        { error: 'Supabase admin client is not configured. Verify SUPABASE_SECRET_KEY in server environment.' },
+        { status: 503 }
+      );
+    }
+
+    const adminClient = createAdminClient();
+    const { count, error: countErr } = await adminClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'ADMIN');
+
+    if (countErr) {
+      throw new Error(`Failed to check existing admin accounts: ${countErr.message}`);
+    }
+
+    const adminExists = Boolean(count && count > 0);
+
+    return NextResponse.json({
+      available: !adminExists,
+      adminExists,
+      message: adminExists
+        ? 'Bootstrap already completed. An administrator account already exists.'
+        : 'First-admin bootstrap is available.',
+    });
+  } catch (error: any) {
+    console.error('API /api/admin/bootstrap GET error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Unable to check bootstrap status.' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;

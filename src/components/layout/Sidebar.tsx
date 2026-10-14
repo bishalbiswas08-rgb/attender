@@ -86,13 +86,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   ];
 
   const content = (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 w-64 p-4">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 w-full p-4 select-none">
       {/* Mobile Close Button */}
       <div className="md:hidden flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-2">
-        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">Menu</span>
+        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">Navigation Menu</span>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          aria-label="Close navigation menu"
+          className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
         >
           <X className="w-5 h-5" />
         </button>
@@ -194,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Desktop static sidebar */}
-      <aside className="hidden md:block shrink-0 h-[calc(100vh-4rem)] sticky top-16 z-20">
+      <aside className="hidden md:block w-64 shrink-0 h-[calc(100vh-4rem)] sticky top-16 z-20">
         {content}
       </aside>
 
@@ -202,10 +203,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {isOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
             onClick={onClose}
           />
-          <div className="relative z-10 w-64 max-w-[80vw] h-full shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl animate-in slide-in-from-left duration-200">
             {content}
           </div>
         </div>

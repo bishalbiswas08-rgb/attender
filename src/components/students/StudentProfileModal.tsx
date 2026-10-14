@@ -75,7 +75,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             </div>
 
             {/* Quick Stat Badges */}
-            <div className="grid grid-cols-4 gap-2 mt-4 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-center">
               <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
                 <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Present</span>
                 <p className="text-base font-black text-emerald-800 dark:text-emerald-200">{presentCount}</p>
@@ -98,14 +98,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
         {/* Month Selector Tabs */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Monthly Calendar Breakdown
             </h4>
 
             {/* Month Switcher */}
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
               <button
                 type="button"
                 onClick={() => {
@@ -143,23 +143,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </div>
 
           {/* Interactive Day Grid */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-3 px-1">
+          <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 min-w-0">
+            <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 mb-3 px-1 gap-2">
               <span>{MONTH_NAMES[selectedMonthIdx]} {currentYear}</span>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 text-[11px] sm:text-xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" /> P = Present
                 </span>
-                <span className="flex items-center gap-1 font-medium text-rose-700 dark:text-rose-400">
+                <span className="flex items-center gap-1 font-medium text-rose-700 dark:text-rose-400 text-[11px] sm:text-xs">
                   <span className="w-2 h-2 rounded-full bg-rose-500" /> A = Absent
                 </span>
-                <span className="flex items-center gap-1 font-medium text-amber-700 dark:text-amber-400">
+                <span className="flex items-center gap-1 font-medium text-amber-700 dark:text-amber-400 text-[11px] sm:text-xs">
                   <span className="w-2 h-2 rounded-full bg-amber-500" /> L = Late
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {daysArray.map((day) => {
                 const dayPadded = String(day).padStart(2, '0');
                 const dateKey = `${currentYear}-${monthPadded}-${dayPadded}`;
@@ -183,7 +183,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 return (
                   <div
                     key={day}
-                    className={`h-12 rounded-xl border flex flex-col items-center justify-center p-1 text-xs transition-transform hover:scale-105 ${bgClass}`}
+                    className={`h-10 sm:h-12 rounded-lg sm:rounded-xl border flex flex-col items-center justify-center p-0.5 sm:p-1 text-xs transition-transform hover:scale-105 ${bgClass}`}
                   >
                     <span className="text-[10px] opacity-75">{day}</span>
                     {badge && <span className="text-xs font-black">{badge}</span>}

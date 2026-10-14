@@ -94,24 +94,24 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Link href="/dashboard/scan">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+          <Link href="/dashboard/scan" className="w-full sm:w-auto">
             <Button
               variant="scan"
               size="md"
               leftIcon={<Camera className="w-4 h-4 text-white" />}
-              className="font-bold shadow-md shadow-indigo-600/25"
+              className="w-full sm:w-auto font-bold shadow-md shadow-indigo-600/25"
             >
               SCAN CLASSROOM
             </Button>
           </Link>
 
-          <Link href="/dashboard/individual">
+          <Link href="/dashboard/individual" className="w-full sm:w-auto">
             <Button
               variant="secondary"
               size="md"
               leftIcon={<UserCheck className="w-4 h-4 text-emerald-600" />}
-              className="font-bold"
+              className="w-full sm:w-auto font-bold"
             >
               MARK INDIVIDUAL
             </Button>
@@ -122,7 +122,7 @@ export default function DashboardPage() {
             size="md"
             onClick={() => setIsAddStudentOpen(true)}
             leftIcon={<UserPlus className="w-4 h-4 text-indigo-600" />}
-            className="font-bold"
+            className="w-full sm:w-auto font-bold"
           >
             ADD STUDENT
           </Button>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
       />
 
       {/* Primary Attendance Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Present Today"
           value={dashboardMetrics.todayPresent}
@@ -210,9 +210,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Middle Grid: Charts & Live Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-w-0">
         {/* Left: Charts (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-6 min-w-0">
           <AttendanceChart
             sessions={sessions}
             records={records}
@@ -252,7 +252,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right: Live Activity & Class Info (4 cols) */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-6 min-w-0">
           <RecentActivityList activities={recentActivities} />
 
           {/* At-a-glance Roster card */}

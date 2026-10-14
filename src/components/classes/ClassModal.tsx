@@ -96,7 +96,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Section *
@@ -132,11 +132,11 @@ export const ClassModal: React.FC<ClassModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting}>
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" isLoading={isSubmitting}>
+          <Button variant="primary" type="submit" isLoading={isSubmitting} className="w-full sm:w-auto font-bold">
             {classToEdit ? 'Save Changes' : 'Create Class'}
           </Button>
         </div>

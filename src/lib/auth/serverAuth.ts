@@ -20,9 +20,28 @@ export interface AuthContext {
  */
 export async function getAuthenticatedUser(req?: NextRequest): Promise<AuthContext> {
   const supabase = createServerSupabaseClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  let authUser: User | null = null;
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    authUser = user;
+  } catch {}
+
+  // If cookie auth didn't resolve and request has Authorization Bearer header, verify token
+  if (!authUser && req) {
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7).trim();
+      if (token) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser(token);
+          authUser = user;
+        } catch {}
+      }
+    }
+  }
 
   if (!authUser) {
     return {

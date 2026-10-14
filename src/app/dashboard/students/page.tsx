@@ -67,7 +67,7 @@ export default function StudentsPage() {
               setIsModalOpen(true);
             }}
             leftIcon={<UserPlus className="w-4 h-4" />}
-            className="font-bold shrink-0 shadow-md shadow-indigo-600/20"
+            className="font-bold shrink-0 shadow-md shadow-indigo-600/20 w-full sm:w-auto"
           >
             ADD STUDENT
           </Button>
@@ -75,9 +75,9 @@ export default function StudentsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 min-w-0">
         {/* Search */}
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full md:w-80 min-w-0">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
@@ -89,14 +89,14 @@ export default function StudentsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto min-w-0">
           {/* Class Filter */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs w-full sm:w-auto min-w-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <select
               value={filterClass}
               onChange={(e) => setFilterClass(e.target.value)}
-              className="bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer font-medium"
+              className="bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer font-medium w-full sm:w-auto truncate"
             >
               <option value="all">All Classes</option>
               {classes.map((c) => (
@@ -108,10 +108,10 @@ export default function StudentsPage() {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs">
+          <div className="flex items-center justify-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs shrink-0">
             <button
               onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-lg font-medium transition-colors text-center ${
                 statusFilter === 'active'
                   ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold'
                   : 'text-slate-600 dark:text-slate-400'
@@ -121,7 +121,7 @@ export default function StudentsPage() {
             </button>
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-lg font-medium transition-colors text-center ${
                 statusFilter === 'all'
                   ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold'
                   : 'text-slate-600 dark:text-slate-400'
@@ -134,7 +134,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Student Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-w-0">
         {filteredStudents.map((student) => (
           <StudentCard
             key={student.id}

@@ -365,7 +365,7 @@ export default function AdminManagementPage() {
               <div className="p-8 text-center text-xs text-slate-400">No invitations issued yet.</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs whitespace-nowrap">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
                     <tr>
                       <th className="py-3 px-4">Recipient</th>
@@ -492,7 +492,7 @@ export default function AdminManagementPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Student</th>
@@ -510,7 +510,7 @@ export default function AdminManagementPage() {
                       <td className="py-3 px-4 text-slate-500">{std.roll_number}</td>
                       <td className="py-3 px-4">
                         {std.profile_id ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Linked to Account
                           </span>
                         ) : (
@@ -564,7 +564,7 @@ export default function AdminManagementPage() {
             <div className="p-8 text-center text-xs text-slate-400">No audit logs recorded yet.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Timestamp</th>

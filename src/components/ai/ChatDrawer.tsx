@@ -101,29 +101,29 @@ export const ChatDrawer: React.FC = () => {
   };
 
   return (
-    <Card padding="none" className="flex flex-col h-[650px] shadow-lg border-indigo-100 dark:border-indigo-950/60 overflow-hidden">
+    <Card padding="none" className="flex flex-col h-[500px] sm:h-[620px] max-h-[75vh] min-h-[380px] shadow-lg border-indigo-100 dark:border-indigo-950/60 overflow-hidden w-full min-w-0">
       {/* Header */}
-      <div className="p-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+      <div className="p-3.5 sm:p-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md shrink-0">
             <Bot className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <h3 className="text-sm font-bold flex items-center gap-1.5">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold flex items-center gap-1.5 truncate">
               ATTENDER AI
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/20 text-white">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/20 text-white shrink-0">
                 Gemini Powered
               </span>
             </h3>
-            <p className="text-[11px] text-white/80">Natural-language attendance query agent</p>
+            <p className="text-[11px] text-white/80 truncate">Natural-language attendance query agent</p>
           </div>
         </div>
 
-        <Sparkles className="w-4 h-4 text-amber-300" />
+        <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
       </div>
 
       {/* Suggested Questions Pills */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 overflow-x-auto flex gap-2 shrink-0">
+      <div className="p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 overflow-x-auto flex gap-2 shrink-0">
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-1 shrink-0 flex items-center gap-1">
           <HelpCircle className="w-3 h-3" /> Quick:
         </span>
@@ -139,11 +139,11 @@ export const ChatDrawer: React.FC = () => {
       </div>
 
       {/* Messages Feed */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4">
+      <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3 sm:space-y-4 min-w-0">
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`flex items-start gap-3 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
+            className={`flex items-start gap-2.5 sm:gap-3 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
           >
             <div
               className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
@@ -156,13 +156,13 @@ export const ChatDrawer: React.FC = () => {
             </div>
 
             <div
-              className={`max-w-[82%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
+              className={`max-w-[88%] sm:max-w-[82%] rounded-2xl p-3 sm:p-3.5 text-xs sm:text-sm leading-relaxed min-w-0 ${
                 m.sender === 'user'
                   ? 'bg-indigo-600 text-white rounded-tr-none'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200/60 dark:border-slate-700/60'
               }`}
             >
-              <div className="whitespace-pre-wrap">{m.text}</div>
+              <div className="whitespace-pre-wrap break-words">{m.text}</div>
               <span
                 className={`block text-[9px] mt-1.5 ${
                   m.sender === 'user' ? 'text-indigo-200 text-right' : 'text-slate-400'

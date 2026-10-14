@@ -77,7 +77,7 @@ export const AttendanceChart: React.FC<AttendanceChartProps> = ({
   }
 
   return (
-    <Card padding="md" className="space-y-4">
+    <Card padding="md" className="space-y-4 min-w-0 overflow-hidden">
       {/* Chart Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -91,7 +91,7 @@ export const AttendanceChart: React.FC<AttendanceChartProps> = ({
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs shrink-0 self-start sm:self-auto">
           <button
             onClick={() => setChartType('timeline')}
             className={`px-3 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-colors ${
@@ -117,15 +117,15 @@ export const AttendanceChart: React.FC<AttendanceChartProps> = ({
 
       {/* Chart Body */}
       {chartType === 'timeline' ? (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 min-w-0">
           {/* Bar Chart Representation */}
-          <div className="h-44 flex items-end justify-between gap-2 sm:gap-4 pt-4 px-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="h-44 flex items-end justify-between gap-1.5 sm:gap-4 pt-4 px-1 sm:px-2 border-b border-slate-100 dark:border-slate-800 min-w-0">
             {trendData.map((item, idx) => {
               const heightPct = Math.max(15, Math.min(100, item.rate));
               const isLatest = idx === trendData.length - 1;
 
               return (
-                <div key={`${item.date}-${idx}`} className="flex-1 flex flex-col items-center gap-2 group">
+                <div key={`${item.date}-${idx}`} className="flex-1 flex flex-col items-center gap-2 group min-w-0">
                   <div className="relative w-full flex items-end justify-center h-32">
                     {/* Tooltip */}
                     <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-10">
@@ -143,7 +143,7 @@ export const AttendanceChart: React.FC<AttendanceChartProps> = ({
                       }`}
                     />
                   </div>
-                  <span className={`text-[10px] font-medium truncate ${isLatest ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                  <span className={`text-[10px] font-medium truncate max-w-full ${isLatest ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
                     {item.date}
                   </span>
                 </div>
@@ -151,15 +151,15 @@ export const AttendanceChart: React.FC<AttendanceChartProps> = ({
             })}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Normal (&ge;75%)
+              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 shrink-0" /> Normal (&ge;75%)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> Below Threshold
+              <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shrink-0" /> Below Threshold
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-indigo-600" /> Latest Session
+              <span className="w-2.5 h-2.5 rounded-sm bg-indigo-600 shrink-0" /> Latest Session
             </span>
           </div>
         </div>

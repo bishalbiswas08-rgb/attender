@@ -56,23 +56,23 @@ export default function SettingsPage() {
 
       {/* Threshold Configuration Card */}
       <Card padding="lg" className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Percent className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <Percent className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
               Minimum Attendance Threshold
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Students whose dynamic attendance percentage falls below this value will trigger visual alerts and at-risk notifications across dashboards.
             </p>
           </div>
-          <span className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-sm">
+          <span className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-sm shrink-0">
             {threshold}%
           </span>
         </div>
 
-        <form onSubmit={handleSaveThreshold} className="flex items-center gap-3 pt-2">
-          <div className="relative w-40">
+        <form onSubmit={handleSaveThreshold} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+          <div className="relative w-full sm:w-40">
             <input
               type="number"
               min="1"
@@ -84,7 +84,7 @@ export default function SettingsPage() {
             <span className="absolute right-4 top-2 text-slate-400 text-sm font-bold">%</span>
           </div>
 
-          <Button variant="primary" size="md" type="submit" leftIcon={<Save className="w-4 h-4" />}>
+          <Button variant="primary" size="md" type="submit" leftIcon={<Save className="w-4 h-4" />} className="w-full sm:w-auto">
             Save Threshold
           </Button>
         </form>
@@ -158,15 +158,15 @@ export default function SettingsPage() {
             <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold text-base flex items-center justify-center shrink-0">
               {user?.full_name ? user.full_name[0] : 'U'}
             </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                 {user?.full_name || 'Authenticated User'}
               </p>
-              <p className="text-xs text-slate-400">{user?.email || 'user@attender.edu'}</p>
+              <p className="text-xs text-slate-400 truncate">{user?.email || 'user@attender.edu'}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <RoleBadge role={user?.role || 'TEACHER'} />
             {isAdmin && (
               <Button
@@ -205,7 +205,7 @@ export default function SettingsPage() {
               router.push('/login');
             }}
             leftIcon={<LogOut className="w-4 h-4" />}
-            className="font-bold shadow-sm"
+            className="font-bold shadow-sm w-full sm:w-auto"
           >
             Log Out
           </Button>
